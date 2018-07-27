@@ -1,97 +1,172 @@
+<section id="comments-section">
+
+    {% resource "comments_js/comments.js" %}
+
+    {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
+
+    <!-- Modal -->
+    <div id="{{prefix}}myModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+        <form id="{{ prefix + values.id }}" class="form"
+              action="{{ pkg_id }}/comments/{% if values.id %}{{ values.id }}/{% endif %}{{ action }}" method="POST">
 
 
-{% resource "comments_js/comments.js" %}
+            <div class="modal-header">
+                <!--<label for="subject">{{ _('Subject') }}</label>-->
+                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty
+                       %}value="{{ values.subject }}" {%
+                       endif
+                       %}/>
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
+                <span class="form-help">(optional subject for your comment)</span>
+            </div>
+            <div class="modal-body">
+                <!--<label for="comment">{{ _('Comment') }}</label>-->
+                {% set unescaped_content = values.content.split('<br/>') %}
+                <textarea name="comment" class="form-control" placeholder="Your comment..." rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{'\n'}}{% endfor %}{% endif %}</textarea>
+            </div>
+            <div class="modal-footer">
+                {% if c.userobj %}
+                <div class="form-user">
+                    Posting as <a href="{{ h.url_for(controller='user', action='read', id=c.userobj.name) }}"
+                                  class="image"
+                                  title="{{ _('View profile') }}">
+                    {{ h.gravatar((c.userobj.email_hash if c and c.userobj else ''), size=22) }}
+                    <span class="username">{{ c.userobj.display_name }}</span>
+                </a>. Comments may be moderated.
+                </div>
+                {% endif %}
+                <div class="form-actions">
+                    <input type="submit" class="btn btn-small btn-primary" value="{{ _('Post Comment') }}"/>
+                    <button class="btn btn-small btn-danger" data-dismiss="modal" aria-hidden="true">X</button>
 
-{% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
-    <form id="{{ prefix + values.id }}" class="form {% if hidden %}hidden{% endif %}" action="{{ pkg_id }}/comments/{% if values.id %}{{ values.id }}/{% endif %}{{ action }}" method="POST">
-        <div class="form-controls">
-            <label for="subject">{{ _('Subject') }}</label>
-            <input type="text" class="form-control" name="subject" {% if not empty %}value="{{ values.subject }}" {% endif %}/>
-            <label for="comment">{{ _('Comment') }}</label>
-            {% set unescaped_content = values.content.split('<br/>') %}
-            <textarea name="comment" class="form-control" rows="10">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{'\n'}}{% endfor %}{% endif %}</textarea>
-        </div>
-        <div class="form-actions">
-            <input type="submit" class="btn btn-primary" value="{{ _('Save') }}"/>
-            <input type="reset" class="btn" value="{{ _('Clear') }}"/>
-        </div>
-    </form>
-{% endmacro %}
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endmacro %}
 
 
+    {% set thread = h.get_comment_thread(pkg_name) %}
 
-{% set thread = h.get_comment_thread(pkg_name) %}
-
-{% macro comment_thread(thread) %}
+    {% macro comment_thread(thread) %}
 
     <div class="comment-wrapper">
-    {% for comment in thread.comments %}
-        {{ comment.id }}
+        {% for comment in thread.comments %}
         <div class="comment">
-            {% if comment.state != 'deleted' %}
-                <h3>{{ comment.subject }}</h3>
-            {% else %}
-                <h3>{{ _('This comment was deleted.') }}</h3>
-            {% endif %}
-            <div class="submitted">
-                <span>{{ h.render_datetime(comment.creation_date, "%d.%m.%Y %H:%M") }} {{  h.linked_user(comment.user_id, 0, 10) }}</span>
-                {% if comment.modified_date %}
-                    <br/><span>{{ h.render_datetime(comment.modified_date, "%d.%m.%Y %H:%M") }} {{ _('Modified') }} </span>
+            <div class="row-fluid comment-subject">
+                {% if comment.state != 'deleted' %}
+                <div class="span4 col-md-4 comment-spacer"><h4>{{ comment.subject }}</h4></div>
+
+                {% else %}
+
+                <div class="span4 col-md-4 comment-spacer"><h4>{{ _('This comment was deleted.') }}</h4></div>
                 {% endif %}
+                <div class="span4 col-md-4 pull-right comment-date-label">
+                    <span class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }} by {{  h.linked_user(comment.user_id, 0, 10) }}</span>
+                </div>
+
             </div>
-            <div class="content">
-            {% if comment.state != 'deleted' %}
-                {{ comment.content|safe }}
-            {% else %}
-                {{ _('This comment was deleted.') }}
-            {% endif %}
-            {% if comment.state == 'active' %}
-            <ul class="links list-inline">
-                {% if h.check_access('package_update', {'id': pkg_id }) %}
-                    <li><a href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete">{{ _('Delete') }}</a> </li>
-                {% endif %}
+            <div class="row-fluid comment-content">
+                <div class="content comment-spacer">
+                    {% if comment.state != 'deleted' %}
+                    {{ comment.content|safe }}
+                    {% else %}
+                    {{ _('This comment was deleted.') }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row-fluid comment-foot">
 
-                {% if userobj and comment.user_id == userobj.id %}
-                    <li><a onclick="ShowCommentForm('edit_{{ comment.id }}')">{{ _('Edit') }}</a></li>
-                    {{ comment_form(comment, prefix='edit_', action='edit') }}
-                {% endif %}
-                {% if userobj %}
-                    <li><a onclick="ShowCommentForm('reply_{{ comment.id }}')">{{ _('Reply') }}</a> </li>
-                    {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                {% endif %}
+                <div class="comment-footer comment-spacer">
+                    {% if comment.state == 'active' %}
+                    {% if comment.modified_date %}
+                    <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
+                            "%m.%d.%Y at %H:%M") }}
+                        </span>
+                    {% endif %}
 
-            </ul>
-            {% endif %}
+
+                    <ul class="links list-inline pull-right">
+
+                        {% if userobj %}
+                        <li><a href="#reply_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
+                            _('Reply')
+                            }}</a></li>
+                        {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
+                        {% endif %}
+                        {% if userobj and comment.user_id == userobj.id %}
+                        <li><a href="#edit_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
+                            _('Edit')
+                            }}</a></li>
+                        {{ comment_form(comment, prefix='edit_', action='edit') }}
+                        {% endif %}
+                        {% if h.check_access('package_update', {'id': pkg_id }) %}
+                        <li><a class="btn btn-small btn-danger"
+                               href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i class="fa fa-trash"></i></a>
+                        </li>
+                        {% endif %}
+
+
+                    </ul>
+                    {% endif %}
+                </div>
             </div>
         </div>
+        <div class="replies">
             {% if comment.comments | length != 0 %}
-                {{ comment_thread(comment) }}
+            {{ comment_thread(comment) }}
             {% endif %}
-    {% endfor %}
+        </div>
+        {% endfor %}
     </div>
 
-{% endmacro %}
-<h3 id="comments">{{ _('Comments') }}</h3>
-<div class="comment-container">
-    {{ comment_thread(thread) }}
-</div>
+    {% endmacro %}
 
-{% if userobj %}
 
-<form class="form" action="{{ pkg_id }}/comments/add" method="POST">
-    <div class="form-controls">
-        <label for="subject">{{ _('Subject') }}</label>
-        <input type="text" class="form-control" name="subject"/>
-
-        <label for="comment">{{ _('Comment') }}</label>
-        <textarea name="comment" class="form-control" rows="10"></textarea>
+    <div class="row-fuid">
+        <h3 id="comments">{{ _('Comments') }} </h3>
     </div>
-    <div class="form-actions">
-        <input type="submit" class="btn btn-primary" value="{{ _('Save') }}"/>
-        <input type="reset" class="btn" value="{{ _('Clear') }}"/>
-    </div>
-</form>
 
-{% else %}
+    <div class="row-fluid">
+        <div class="comment-container">
+            {% if thread.comments | length != 0 %}
+            {{ comment_thread(thread) }}
+            {% else %}
+            <div class="no-comment row-fluid">
+                <div class="chev-row" data-toggle="collapse" data-target="#form-collapse">
+                    <div class="span4 col-md-4">
+                        <p class="no-comments">Be the first to comment
+                        </p>
+                    </div>
+                    <div class="span3">
+                        <h4 class="chev-btn"><i class="chev-icon fa fa-chevron-down fa-2x"></i></h4>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if userobj %}
+    <div id="form-collapse" class="collapse">
+        <form class="form form-comment" action="{{ pkg_id }}/comments/add" method="POST">
+            <div class="form-controls">
+                <input type="text" placeholder="Subject..." class="form-subject" name="subject"/>
+
+                <textarea name="comment" placeholder="Your comment..." class="form-control" rows="6"></textarea>
+            </div>
+            <div class="pull-right">
+                <input type="reset" class="btn btn-small" value="{{ _('Clear') }}"/>
+                <input type="submit" class="btn btn-small btn-primary" value="{{ _('Post Comment') }}"/>
+                <br>
+            </div>
+        </form>
+    </div>
+
+    {% else %}
     {{ _('Login to comment.') }}
-{% endif %}
+    {% endif %}
+</section>
+
+
