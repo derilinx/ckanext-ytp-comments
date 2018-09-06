@@ -22,9 +22,11 @@ def comment_delete(context, data_dict):
 
     comment = comment_model.Comment.get(cid)
     if not comment:
+        print "Comment doesn't exist"
         return {'success': False, 'msg': _('Comment does not exist')}
 
-    if comment.user_id is not userobj.id:
+    if comment.user_id != userobj.id:
+        print "User is not the author of the comment"
         return {'success': False, 'msg': _('User is not the author of the comment')}
 
     return {'success': True}

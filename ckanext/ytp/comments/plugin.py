@@ -1,5 +1,6 @@
 import ckan.plugins as plugins
 from ckan.plugins import implements, toolkit
+import helpers
 
 import logging
 
@@ -27,7 +28,8 @@ class YtpCommentsPlugin(plugins.SingletonPlugin):
     def get_helpers(self):
         return {
             'get_comment_thread': self._get_comment_thread,
-            'get_comment_count_for_dataset': self._get_comment_count_for_dataset
+            'get_comment_count_for_dataset': self._get_comment_count_for_dataset,
+            'linked_user_comments': helpers.linked_user_comments
         }
 
     def get_actions(self):

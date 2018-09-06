@@ -75,7 +75,8 @@ class CommentController(BaseController):
         try:
             c.pkg_dict = get_action('package_show')(context, {'id': dataset_id})
             c.pkg = context['package']
-        except:
+        except Exception, e:
+            log.error(e)
             abort(403)
 
         if request.method == 'POST':
@@ -88,9 +89,9 @@ class CommentController(BaseController):
                 res = get_action('comment_create')(context, data_dict)
                 success = True
             except ValidationError, ve:
-                log.debug(ve)
+                log.error(ve)
             except Exception, e:
-                log.debug(e)
+                log.error(e)
                 abort(403)
 
             if success:
