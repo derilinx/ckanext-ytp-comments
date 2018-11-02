@@ -5,6 +5,9 @@ from ckan import logic
 from pprint import pprint
 import logging
 import ckan.plugins.toolkit as toolkit
+import ckan.plugins as p
+
+
 
 log = logging.getLogger(__name__)
 
@@ -12,7 +15,6 @@ EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE = """Dear Energydata.info Team,
 
 A new comment has been posted on ENERGYDATA.INFO.
 
-By user: {2}
 Comment: {0}
 
 Click to view the thread at {1}
@@ -39,11 +41,12 @@ def notify_official(dataset, usrobj, comment=False):
 
     email_dict = dict()
     email_dict['name'] = 'Energydata.info'
-    officials_emails = ['jodie@derilinx.com', 'energydata@worldbankgroup.org']
+    officials_emails = ['jodie@derilinx.com', 'disabled@example.com']
+    # 'energydata@worldbankgroup.org'
 
     if comment:
         email_dict['subject'] = "New Comment on a Dataset on Energydata.info"
-        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url, usrobj.name)
+        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url)
     else:
         email_dict['subject'] = "no subject"
         email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_STATUS_CREATE % request_dataset_url
@@ -90,8 +93,15 @@ def comment_create(context, data_dict):
 
     # Create the object
     cmt = comment_model.Comment(thread_id=thread_id,
+
                                 comment=cleaned_comment)
-    cmt.user_id = userobj.id
+    print "Here we go..."
+    if userobj:
+        cmt.user_id = userobj.id
+    else:
+        #admin user id
+        cmt.user_id = 'd66f8499-ae73-49c3-b641-f1203abfee05'
+    print cmt.user_id
     cmt.subject = data_dict.get('subject', '')
 
     if 'creation_date' in context:

@@ -29,12 +29,7 @@
             <div class="modal-footer">
                 {% if c.userobj %}
                 <div class="form-user">
-                    Posting as <a href="{{ h.url_for(controller='user', action='read', id=c.userobj.name) }}"
-                                  class="image"
-                                  title="{{ _('View profile') }}">
-                    {{ h.gravatar((c.userobj.email_hash if c and c.userobj else ''), size=22) }}
-                    <span class="username">{{ c.userobj.name }}</span>
-                </a>. Comments may be moderated.
+                    Comments may be moderated.
                 </div>
                 {% endif %}
                 <div class="form-actions">
@@ -86,17 +81,15 @@
                         </span>
                     {% endif %}
 
+                    {% if c.userobj.sysadmin %}
 
                     <ul class="links list-inline pull-right">
 
-                        {% if c.userobj.sysadmin %}
                         <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-primary"
                                data-toggle="modal">{{
                             _('Reply')
                             }}</a></li>
                         {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                        {% endif %}
-                        {% if userobj and comment.user_id == userobj.id or c.userobj.sysadmin %}
                         <li><a href="#{{comment.id}}edit_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
                             _('Edit')
                             }}</a></li>
@@ -104,10 +97,9 @@
                         <li><a class="btn btn-small btn-danger"
                                href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i class="fa fa-trash"></i></a>
                         </li>
-                        {% endif %}
-
-
                     </ul>
+                    {% endif %}
+
                     {% endif %}
                 </div>
             </div>
@@ -135,14 +127,60 @@
 
         <tr class="{% if loop.index>4 %}toggle-more{%endif%} comment-subject">
             <th scope="row">{{ comment.subject }}</th>
-            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }} by {{
-                h.linked_user_comments(comment.user_id, 0, 10) }}
+            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
             </td>
         </tr>
         <tr class="{% if loop.index>4 %}toggle-more{%endif%} comment-content">
             <td scope="row" colspan="2">{{ comment.content|safe }}</td>
         </tr>
         <tr class="{% if loop.index>4 %}toggle-more{%endif%} comment-foot">
+            <td colspan="2">{% if comment.state == 'active' %}
+                {% if comment.modified_date %}
+                <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
+                            "%m.%d.%Y at %H:%M") }}
+                        </span>
+                {% endif %}
+
+
+                <ul class="links list-inline pull-right">
+
+                    {% if c.userobj.sysadmin %}
+                    <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
+                        _('Reply')
+                        }}</a></li>
+                    {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
+                    <li><a href="#{{comment.id}}edit_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
+                        _('Edit')
+                        }}</a></li>
+                    {{ comment_form(comment, prefix='edit_', action='edit') }}
+                    <li><a class="btn btn-small btn-danger"
+                           href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i class="fa fa-trash"></i></a>
+                    </li>
+                    {% endif %}
+
+
+                </ul>
+                {% endif %}
+            </td>
+        </tr>
+
+        {% if loop.index<5 %}
+
+
+        {% if comment.comments | length != 0 %}
+        {% for comment in comment.comments %}
+        {% if comment.state != 'deleted' %}
+
+
+        <tr style="" class="comment-subject">
+            <th scope="row">{{ comment.subject }}</th>
+            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
+            </td>
+        </tr>
+        <tr class="comment-content">
+            <td scope="row" colspan="2">{{ comment.content|safe }}</td>
+        </tr>
+        <tr class="comment-foot">
             <td colspan="2">{% if comment.state == 'active' %}
                 {% if comment.modified_date %}
                 <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
@@ -174,16 +212,20 @@
                 {% endif %}
             </td>
         </tr>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
 
-        {#
+        {% else %}
 
         {% if comment.comments | length != 0 %}
         {% for comment in comment.comments %}
+        {% if comment.state != 'deleted' %}
 
-<tr style="" class="toggle-more comment-subject">
+
+        <tr style="" class="toggle-more comment-subject">
             <th scope="row">{{ comment.subject }}</th>
-            <td>Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }} by {{
-                h.linked_user_comments(comment.user_id, 0, 10) }}
+            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
             </td>
         </tr>
         <tr class="toggle-more comment-content">
@@ -223,7 +265,10 @@
         </tr>
         {% endif %}
         {% endfor %}
-        #}
+        {% endif %}
+
+        {% endif %}
+
 
         {% endif %}
         {% endfor %}
@@ -232,8 +277,7 @@
         {% for comment in thread.comments %}
         <tr class="toggle-more">
             <th scope="row">{{ comment.subject }}</th>
-            <td>Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }} by {{
-                h.linked_user_comments(comment.user_id, 0, 10) }}
+            <td>Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
             </td>
         </tr>
         {% endfor %}
@@ -267,7 +311,6 @@
         </div>
     </div>
 
-    {% if userobj %}
     <div id="form-collapse" class="collapse in">
         <form class="form form-comment" action="{{ pkg_id }}/comments/add" method="POST">
             <div class="form-controls">
@@ -282,12 +325,6 @@
             </div>
         </form>
     </div>
-
-    {% else %}
-    <br>
-    <br>
-    {{ _('Please login to comment.') }}
-    {% endif %}
 
 
 
