@@ -41,7 +41,7 @@ def notify_official(dataset, usrobj, comment=False):
 
     email_dict = dict()
     email_dict['name'] = 'Energydata.info'
-    officials_emails = ['jodie@derilinx.com', 'disabled@example.com']
+    officials_emails = ['jodie@derilinx.com', 'energydata@worldbankgroup.org']
     # 'energydata@worldbankgroup.org'
 
     if comment:
