@@ -6,6 +6,7 @@ from pprint import pprint
 import logging
 import ckan.plugins.toolkit as toolkit
 import ckan.plugins as p
+from ckanext.ytp.comments import captcha
 
 
 
@@ -87,6 +88,8 @@ def comment_create(context, data_dict):
 
     if not thread_id:
         raise logic.ValidationError("Thread identifier or URL is required")
+
+    captcha.check(request, c)
 
     # Cleanup the comment
     cleaned_comment = util.clean_input(data_dict.get('comment'))

@@ -14,7 +14,8 @@
 
             <div class="modal-header">
                 {# <label for="subject">{{ _('Subject') }}</label>
-                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty %}value="{{ values.subject }}"
+                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty
+                       %}value="{{ values.subject }}"
                        {% endif %}/>
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
                 <span class="form-help">(optional subject for your comment)</span> #}
@@ -153,7 +154,10 @@
 
     <div class="row-fluid">
         <div class="chev-row" data-toggle="collapse" data-target="#comment-collapse">
-            <h3 id="comments">{{ _('Comments') }} [{{thread.comments|length}} <i class="fa fa-chevron-down"></i>]   <button data-toggle="collapse" data-target="#form-collapse" class="btn btn-default">Post Comment</button></h3>
+            <h3 id="comments">{{ _('Comments') }} [{{thread.comments|length}} <i class="fa fa-chevron-down"></i>]
+                <button data-toggle="collapse" data-target="#form-collapse" class="btn btn-default">Post Comment
+                </button>
+            </h3>
 
         </div>
     </div>
@@ -171,6 +175,11 @@
                     <input type="submit" class="btn btn-small btn-default" value="{{ _('Post Comment') }}"/>
                     <br>
                 </div>
+                <div id="g-recaptcha" class="g-recaptcha" data-sitekey="{{ g.captcha_secret }}x"
+                     style="margin-bottom:12px;"></div>
+                <script src='https://www.google.com/recaptcha/api.js'></script>
+
+
             </form>
         </div>
     </div>
