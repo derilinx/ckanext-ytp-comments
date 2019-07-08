@@ -30,7 +30,7 @@
 ## File-based project format:
 *.ipr
 *.iws
-
+*.pyc
 ## Plugin-specific files:
 
 # IntelliJ

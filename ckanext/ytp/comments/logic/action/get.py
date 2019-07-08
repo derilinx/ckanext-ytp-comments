@@ -1,5 +1,5 @@
 import logging
-
+from ckan.common import config
 import ckanext.ytp.comments.model as comment_model
 from ckan.lib.base import abort
 from ckan import logic
@@ -17,6 +17,9 @@ def thread_show(context, data_dict):
     """
 
     model = context['model']
+   
+    if not context.get('user', ''):
+        context['user'] = config.get('ckan.comments.annon_user')
 
     url = data_dict.get('url')
     id = data_dict.get('id')

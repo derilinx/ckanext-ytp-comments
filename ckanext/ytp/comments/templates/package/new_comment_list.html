@@ -175,7 +175,7 @@
                     <input type="submit" class="btn btn-small btn-default" value="{{ _('Post Comment') }}"/>
                     <br>
                 </div>
-                <div id="g-recaptcha" class="g-recaptcha" data-sitekey="{{ g.captcha_secret }}x"
+                <div id="g-recaptcha" class="g-recaptcha" data-sitekey="{{ h.get_captcha_key() }}"
                      style="margin-bottom:12px;"></div>
                 <script src='https://www.google.com/recaptcha/api.js'></script>
 
