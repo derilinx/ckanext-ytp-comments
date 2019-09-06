@@ -1,15 +1,61 @@
 <section id="comments-section">
 
+    <style>
+        .comments-modal form {
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            -webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            -moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            -webkit-background-clip: padding-box;
+            -moz-background-clip: padding-box;
+            background-clip: padding-box;
+            background-color: white;
+        }
+
+        #comments-section .panel-header {
+            background-color: #01aef0;
+            padding: 5px;
+            font-size:12px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        #comments-section .panel-footer {
+            background-color: white;
+            padding: 5px;
+            border-top: 2px dashed #01aef0;
+        }
+
+        #comments-section .panel-body {
+            background-color: white;
+            padding: 5px;
+        }
+
+        #comments-section .panel-comment {
+            background-color: white;
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            -webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            -moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+            -webkit-background-clip: padding-box;
+            -moz-background-clip: padding-box;
+            background-clip: padding-box;
+        }
+
+    </style>
     {% resource "comments_js/comments.js" %}
 
     {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
 
     <!-- Modal -->
-    <div id="{{values.id}}{{prefix}}myModal" class="modal hide" tabindex="-1" role="dialog"
+
+    <div id="{{values.id}}{{prefix}}myModal" class="modal comments-modal col-sm-6 col-sm-offset-3" tabindex="-1"
+         role="dialog"
          aria-labelledby="myModalLabel"
          aria-hidden="true">
         <form id="{{ prefix + values.id }}" class="form"
-              action="{{ pkg_id }}/comments/{% if values.id %}{{ values.id }}/{% endif %}{{ action }}" method="POST">
+              action="{{ pkg_id }}/comments/{% if values.id %}{{ values.id }}/{% endif %}{{ action }}"
+              method="POST">
 
 
             <div class="modal-header">
@@ -32,13 +78,14 @@
                 </div>
                 {% endif %}
                 <div class="form-actions">
-                    <input type="submit" class="btn btn-small btn-default" value="{{ _('Post Comment') }}"/>
-                    <button class="btn btn-small btn-danger" data-dismiss="modal" aria-hidden="true">X</button>
+                    <input type="submit" class="btn btn-xs btn-default" value="{{ _('Post Comment') }}"/>
+                    <button class="btn btn-xs btn-danger" data-dismiss="modal" aria-hidden="true">X</button>
 
                 </div>
             </div>
         </form>
     </div>
+
     {% endmacro %}
 
 
@@ -46,109 +93,116 @@
 
 
     {% macro comment_table(thread) %}
-    <table class="table table-bordered table-condensed" data-module="">
+    <div class="comments-container row" data-module="">
 
         <!--data-module="table-toggle-more"-->
 
-
-        <tbody>
         {% for comment in thread.comments %}
         {% if comment.state != 'deleted' %}
 
-
-        <tr class="comment-subject">
-            <th scope="row">{{ comment.subject }}</th>
-            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
-            </td>
-        </tr>
-        <tr class="comment-content">
-            <td scope="row" colspan="2">{{ comment.content|safe }}</td>
-        </tr>
-        <tr class="comment-foot">
-            <td colspan="2">{% if comment.state == 'active' %}
-                {% if comment.modified_date %}
-                <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
+        <div class="panel panel-comment col-sm-offset-3 col-sm-6">
+            <div class="comment-subject ">
+                <div class="panel-header">{{ comment.subject }}
+                    <small class="pull-right comment-date">Created {{ h.render_datetime(comment.creation_date,
+                        "%m.%d.%Y %H:%M") }}
+                    </small>
+                </div>
+            </div>
+            <div class="comment-content panel-body">
+                <p>{{ comment.content|safe }}</p>
+            </div>
+            <div class="comment-foot panel-footer">
+                <div>{% if comment.state == 'active' %}
+                    {% if comment.modified_date %}
+                    <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
                             "%m.%d.%Y at %H:%M") }}
                         </span>
-                {% endif %}
-
-
-                <ul class="links list-inline pull-right">
-
-                    {% if c.userobj.sysadmin %}
-                    <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-default" data-toggle="modal">{{
-                        _('Reply')
-                        }}</a></li>
-                    {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                    <li><a href="#{{comment.id}}edit_myModal" class="btn btn-small btn-default" data-toggle="modal">{{
-                        _('Edit')
-                        }}</a></li>
-                    {{ comment_form(comment, prefix='edit_', action='edit') }}
-                    <li><a class="btn btn-small btn-danger"
-                           href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i class="fa fa-trash"></i></a>
-                    </li>
                     {% endif %}
 
 
-                </ul>
-                {% endif %}
-            </td>
-        </tr>
+                    <ul class="links list-inline pull-right">
+
+                        {% if c.userobj.sysadmin %}
+                        <li><a href="#{{comment.id}}reply_myModal" class="btn btn-xs btn-default"
+                               data-toggle="modal">{{
+                            _('Reply')
+                            }}</a></li>
+                        {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
+                        <li><a href="#{{comment.id}}edit_myModal" class="btn btn-xs btn-default"
+                               data-toggle="modal">{{
+                            _('Edit')
+                            }}</a></li>
+                        {{ comment_form(comment, prefix='edit_', action='edit') }}
+                        <li><a class="btn btn-xs btn-danger"
+                               href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i
+                                class="fa fa-trash"></i></a>
+                        </li>
+                        {% endif %}
 
 
-        {% for comment in comment.comments %}
-        {% if comment.state != 'deleted' %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
 
 
-        <tr class="comment-subject">
-            <th scope="row">{{ comment.subject }}</th>
-            <td class="comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
-            </td>
-        </tr>
-        <tr class="comment-content">
-            <td scope="row" colspan="2">{{ comment.content|safe }}</td>
-        </tr>
-        <tr class="comment-foot">
-            <td colspan="2">{% if comment.state == 'active' %}
-                {% if comment.modified_date %}
-                <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
+            {% for comment in comment.comments %}
+            {% if comment.state != 'deleted' %}
+
+            <div class="panel panel-comment">
+                <div class="comment-subject">
+                    <div class="panel-header">{{ comment.subject }}
+                        <span class="pull-right comment-date">Created {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}
+            </span></div>
+                </div>
+                <div class="comment-content panel-body">
+                    <div>{{ comment.content|safe }}</div>
+                </div>
+                <div class="comment-foot panel-footer">
+                    <div>{% if comment.state == 'active' %}
+                        {% if comment.modified_date %}
+                        <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
                             "%m.%d.%Y at %H:%M") }}
                         </span>
+                        {% endif %}
+
+
+                        <ul class="links list-inline pull-right">
+
+                            {% if c.userobj.sysadmin %}
+                            <li><a href="#{{comment.id}}reply_myModal" class="btn btn-xs btn-default"
+                                   data-toggle="modal">{{
+                                _('Reply')
+                                }}</a></li>
+                            {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
+                            {% endif %}
+                            {% if userobj and comment.user_id == userobj.id or c.userobj.sysadmin %}
+                            <li><a href="#{{comment.id}}edit_myModal" class="btn btn-xs btn-default"
+                                   data-toggle="modal">{{
+                                _('Edit')
+                                }}</a></li>
+                            {{ comment_form(comment, prefix='edit_', action='edit') }}
+                            <li><a class="btn btn-xs btn-danger"
+                                   href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i
+                                    class="fa fa-trash"></i></a>
+                            </li>
+                            {% endif %}
+
+
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endif %}
+                {% endfor %}
 
 
-                <ul class="links list-inline pull-right">
-
-                    {% if c.userobj.sysadmin %}
-                    <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-default" data-toggle="modal">{{
-                        _('Reply')
-                        }}</a></li>
-                    {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                    {% endif %}
-                    {% if userobj and comment.user_id == userobj.id or c.userobj.sysadmin %}
-                    <li><a href="#{{comment.id}}edit_myModal" class="btn btn-small btn-default" data-toggle="modal">{{
-                        _('Edit')
-                        }}</a></li>
-                    {{ comment_form(comment, prefix='edit_', action='edit') }}
-                    <li><a class="btn btn-small btn-danger"
-                           href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i class="fa fa-trash"></i></a>
-                    </li>
-                    {% endif %}
-
-
-                </ul>
                 {% endif %}
-            </td>
-        </tr>
-        {% endif %}
-        {% endfor %}
+                {% endfor %}
+            </div>
 
-
-        {% endif %}
-        {% endfor %}
-
-        </tbody>
-    </table>
+        </div>
+    </div>
     {% endmacro %}
 
 
@@ -171,8 +225,8 @@
                     <textarea name="comment" placeholder="Your comment..." class="form-control" rows="6"></textarea>
                 </div>
                 <div class="pull-right" style="margin-bottom: 16px;">
-                    <input type="reset" class="btn btn-small" value="{{ _('Clear') }}"/>
-                    <input type="submit" class="btn btn-small btn-default" value="{{ _('Post Comment') }}"/>
+                    <input type="reset" class="btn btn-xs" value="{{ _('Clear') }}"/>
+                    <input type="submit" class="btn btn-xs btn-default" value="{{ _('Post Comment') }}"/>
                     <br>
                 </div>
                 <div id="g-recaptcha" class="g-recaptcha" data-sitekey="{{ h.get_captcha_key() }}"
