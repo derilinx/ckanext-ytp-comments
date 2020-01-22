@@ -5,6 +5,8 @@ from ckan import model
 from ckan.common import c
 from ckan.logic import check_access, get_action, clean_dict, tuplize_dict, ValidationError, parse_params
 from ckan.lib.navl.dictization_functions import unflatten
+from ckanext.ytp.comments import captcha
+
 
 
 log = logging.getLogger(__name__)
@@ -12,7 +14,8 @@ log = logging.getLogger(__name__)
 
 class CommentController(BaseController):
     def add(self, dataset_id):
-        return self._add_or_reply(dataset_id)
+        check = True
+        return self._add_or_reply(dataset_id, check)
 
     def edit(self, dataset_id, comment_id):
 
@@ -50,6 +53,7 @@ class CommentController(BaseController):
 
     def reply(self, dataset_id, parent_id):
         c.action = 'reply'
+        check = False
 
         try:
             data = {'id': parent_id}
@@ -59,9 +63,9 @@ class CommentController(BaseController):
         except:
             abort(404)
 
-        return self._add_or_reply(dataset_id)
+        return self._add_or_reply(dataset_id, check)
 
-    def _add_or_reply(self, dataset_id):
+    def _add_or_reply(self, dataset_id, check):
         """
        Allows the user to add a comment to an existing dataset
        """
@@ -80,8 +84,24 @@ class CommentController(BaseController):
             abort(403)
 
         if request.method == 'POST':
+            print(request)
+
+
+
+            if check:
+                captcha.check(request, c)
             data_dict = clean_dict(unflatten(
                 tuplize_dict(parse_params(request.POST))))
+
+
+            bad_words = ['cialis', 'viagra', 'levitra', 'sildenafil', 'doxycycline']
+            for word in bad_words:
+                if word in data_dict['comment'] or word in data_dict['subject']:
+                    print('Bad word detected - naughty word is {}'.format(word))
+                    return render("package/read.html")
+
+
+
             data_dict['parent_id'] = c.parent.id if c.parent else None
             data_dict['url'] = '/dataset/%s' % c.pkg.name
             success = False

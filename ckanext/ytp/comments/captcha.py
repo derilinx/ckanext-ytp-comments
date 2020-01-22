@@ -35,8 +35,7 @@ def check(request, c):
     :param: c context error dict
     """
 
-    if os.environ.get('PRODUCTION', None) == 'true':
-        answer = _check_captcha(request.POST.get('g-recaptcha-response', None))
-        if not answer:
-            c.errors['Captcha Failure'] = ['You failed to enter a valid captcha']
-            c.errors_summary['Captcha Failure'] = 'You failed to enter a valid captcha'
+    answer = _check_captcha(request.POST.get('g-recaptcha-response', None))
+    if not answer:
+        c.errors['Captcha Failure'] = ['You failed to enter a valid captcha']
+        c.errors_summary['Captcha Failure'] = 'You failed to enter a valid captcha'

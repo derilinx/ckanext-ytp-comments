@@ -91,6 +91,7 @@ def comment_create(context, data_dict):
 
     captcha.check(request, c)
 
+
     # Cleanup the comment
     cleaned_comment = util.clean_input(data_dict.get('comment'))
 
@@ -98,13 +99,13 @@ def comment_create(context, data_dict):
     cmt = comment_model.Comment(thread_id=thread_id,
 
                                 comment=cleaned_comment)
-    print "Here we go..."
+    print("Here we go...")
     if userobj:
         cmt.user_id = userobj.id
     else:
         #admin user id
         cmt.user_id = 'd66f8499-ae73-49c3-b641-f1203abfee05'
-    print cmt.user_id
+    print(cmt.user_id)
     cmt.subject = data_dict.get('subject', '')
 
     if 'creation_date' in context:
