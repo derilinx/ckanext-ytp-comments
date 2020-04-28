@@ -14,8 +14,9 @@ log = logging.getLogger(__name__)
 
 EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE = """Dear data.gov.ie Team,
 
-A new comment has been posted on DATA.GOV.IE
+A new comment has been posted on DATA.GOV.IE.
 
+Subject: {2}
 Comment: {0}
 
 Click to view the thread at {1}
@@ -42,12 +43,11 @@ def notify_official(dataset, usrobj, comment=False):
 
     email_dict = dict()
     email_dict['name'] = 'data.gov.ie'
-    officials_emails = ['jodie@derilinx.com', 'mario@derilinx.com']
-    # 'energydata@worldbankgroup.org'
+    officials_emails = ['jodie@derilinx.com']
 
     if comment:
         email_dict['subject'] = "New Comment on a Dataset on data.gov.ie"
-        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url)
+        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url, comment.subject)
     else:
         email_dict['subject'] = "no subject"
         email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_STATUS_CREATE % request_dataset_url
@@ -73,7 +73,7 @@ def comment_create(context, data_dict):
     if (not user) or (user != 'admin'):
         user = config.get('ckan.comments.annon_user')
         
-    userobj = model.User.get('anon_commenter')
+    userobj = model.User.get('anonymous')
 
     logic.check_access("comment_create", context, data_dict)
 
@@ -101,12 +101,12 @@ def comment_create(context, data_dict):
     cmt = comment_model.Comment(thread_id=thread_id,
 
                                 comment=cleaned_comment)
-    print "Here we go..."
+    print "Creating comment..."
     if userobj:
         cmt.user_id = userobj.id
     else:
         #annon_commenter user
-        cmt.user_id = '5302d1f6-43e1-4623-bd16-9684044e442a'
+        cmt.user_id = '203d79a3-c3c1-4f67-8cfc-eee4c9998787'
     print cmt.user_id
     cmt.subject = data_dict.get('subject', '')
 
@@ -127,7 +127,7 @@ def comment_create(context, data_dict):
     model.Session.add(cmt)
     model.Session.commit()
 
-    # Notify energydata team
+    # Notify open data team
 
     notify_official(package, userobj, comment=cmt)
 

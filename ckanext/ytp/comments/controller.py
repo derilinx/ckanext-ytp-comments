@@ -30,6 +30,7 @@ class CommentController(BaseController):
             abort(403)
 
         if request.method == 'POST':
+
             data_dict = clean_dict(unflatten(
                 tuplize_dict(parse_params(request.POST))))
             data_dict['id'] = comment_id
@@ -65,6 +66,16 @@ class CommentController(BaseController):
         """
        Allows the user to add a comment to an existing dataset
        """
+
+        # First, kill any spam in the honeypot fields
+        if request.POST.get('comment-email', False) or \
+                request.POST.get('comment-url', False):
+            log.error("SPAM post rejected w/email,url: %s", request.POST)
+            c.errors = {'Captcha Failure': ['You failed to enter a valid captcha']}
+            c.errors_summary = _get_errors_summary(c.errors)
+            tk.abort(403, 'You failed to enter a valid captcha')
+            return
+
         context = {'model': model, 'user': c.user}
 
         # Auth check to make sure the user can see this package
@@ -80,11 +91,24 @@ class CommentController(BaseController):
             abort(403)
 
         if request.method == 'POST':
+
             data_dict = clean_dict(unflatten(
                 tuplize_dict(parse_params(request.POST))))
             data_dict['parent_id'] = c.parent.id if c.parent else None
             data_dict['url'] = '/dataset/%s' % c.pkg.name
             success = False
+
+            body = data_dict.get('comment', False)
+            if not body:
+                h.flash_error('You must provide a comment body')
+                h.redirect_to(controller='package', action='read', id=dataset_id)
+
+            words = data_dict.get('comment', '').split(' ')
+            if len(words) > 300:
+                h.flash_error('Please limit your comment to 300 words')
+                h.redirect_to(controller='package', action='read', id=dataset_id)
+
+
             try:
                 res = get_action('comment_create')(context, data_dict)
                 success = True

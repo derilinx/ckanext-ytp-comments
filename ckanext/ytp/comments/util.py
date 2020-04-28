@@ -12,5 +12,5 @@ def clean_input(comment):
 
     cleaner = Cleaner(add_nofollow=True, allow_tags=ALLOWED_TAGS,
                       remove_unknown_tags=False)
-    content = cleaner.clean_html(data).replace('\n', '<br/>')
+    content = cleaner.clean_html(data).replace('\n', '&nbsp;')
     return content

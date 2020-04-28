@@ -5,7 +5,7 @@
     {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
 
     <!-- Modal -->
-    <div id="{{values.id}}{{prefix}}myModal" class="modal hide" tabindex="-1" role="dialog"
+    <div id="{{values.id}}{{prefix}}myModal" class="modal " tabindex="-1" role="dialog"
          aria-labelledby="myModalLabel"
          aria-hidden="true">
         <form id="{{ prefix + values.id }}" class="form"
