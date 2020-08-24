@@ -43,7 +43,7 @@ def notify_official(dataset, usrobj, comment=False):
 
     email_dict = dict()
     email_dict['name'] = 'data.gov.ie'
-    officials_emails = ['jodie@derilinx.com']
+    officials_emails = ['jodie@derilinx.com', 'opendata@per.gov.ie']
 
     if comment:
         email_dict['subject'] = "New Comment on a Dataset on data.gov.ie"
