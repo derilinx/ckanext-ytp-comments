@@ -29,7 +29,8 @@ class YtpCommentsPlugin(plugins.SingletonPlugin):
         return {
             'get_comment_thread': self._get_comment_thread,
             'get_comment_count_for_dataset': self._get_comment_count_for_dataset,
-            'linked_user_comments': helpers.linked_user_comments
+            'linked_user_comments': helpers.linked_user_comments,
+            'get_site_captcha': helpers.get_site_captcha
         }
 
     def get_actions(self):

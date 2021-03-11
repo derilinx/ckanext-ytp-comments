@@ -31,3 +31,7 @@ def linked_user_comments(user, maxlength=0, avatar=20):
                 url_for(controller='user', action='read', id=name)
             )
         ))
+    
+    
+def get_site_captcha():
+    return '6LcKQEsUAAAAAExrtWZWOKD_dfYSCMSbpXpmbTXF'

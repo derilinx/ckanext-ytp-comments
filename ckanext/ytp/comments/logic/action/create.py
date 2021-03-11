@@ -106,7 +106,7 @@ def comment_create(context, data_dict):
         cmt.user_id = userobj.id
     else:
         #annon_commenter user
-        cmt.user_id = '203d79a3-c3c1-4f67-8cfc-eee4c9998787'
+        cmt.user_id = '0863c6bf-d7d8-485b-94b7-d50a11d5796d'
     print cmt.user_id
     cmt.subject = data_dict.get('subject', '')
 
