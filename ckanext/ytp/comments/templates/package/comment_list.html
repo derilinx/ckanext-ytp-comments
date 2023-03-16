@@ -1,6 +1,6 @@
 <section id="comments-section">
 
-    {% resource "comments_js/comments.js" %}
+    {% asset "comments/comments.js" %}
 
     {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
 
@@ -13,21 +13,18 @@
 
 
             <div class="modal-header">
-                {# <label for="subject">{{ _('Subject') }}</label>
-                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty
-                       %}value="{{ values.subject }}" {%
-                       endif
-                       %}/>
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
-                <span class="form-help">(optional subject for your comment)</span> #}
+                <span class="form-help">(optional subject for your comment)</span>
             </div>
             <div class="modal-body">
                 <!--<label for="comment">{{ _('Comment') }}</label>-->
+                <label for="subject">{{ _('Subject') }}</label>
+                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty %}value="{{ values.subject }}" {% endif %}/>
                 {% set unescaped_content = values.content.split('<br/>') %}
-                <textarea name="comment" class="form-control" placeholder="Your comment..." rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{'\n'}}{% endfor %}{% endif %}</textarea>
+                <textarea name="comment" class="form-control" placeholder="Your comment..." rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}<br />{% endfor %}{% endif %}</textarea>
             </div>
             <div class="modal-footer">
-                {% if c.userobj %}
+                {% if g.userobj %}
                 <div class="form-user">
                     Comments may be moderated.
                 </div>
@@ -81,7 +78,7 @@
                         </span>
                     {% endif %}
 
-                    {% if c.userobj.sysadmin %}
+                    {% if g.userobj.sysadmin %}
 
                     <ul class="links list-inline pull-right">
 
@@ -144,7 +141,7 @@
 
                 <ul class="links list-inline pull-right">
 
-                    {% if c.userobj.sysadmin %}
+                    {% if g.userobj.sysadmin %}
                     <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
                         _('Reply')
                         }}</a></li>
@@ -191,7 +188,7 @@
 
                 <ul class="links list-inline pull-right">
 
-                    {% if c.userobj.sysadmin %}
+                    {% if g.userobj.sysadmin %}
                     <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
                         _('Reply')
                         }}</a></li>
@@ -242,13 +239,13 @@
 
                 <ul class="links list-inline pull-right">
 
-                    {% if c.userobj.sysadmin %}
+                    {% if g.userobj.sysadmin %}
                     <li><a href="#{{comment.id}}reply_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
                         _('Reply')
                         }}</a></li>
                     {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
                     {% endif %}
-                    {% if userobj and comment.user_id == userobj.id or c.userobj.sysadmin %}
+                    {% if g.userobj and comment.user_id == userobj.id or g.userobj.sysadmin %}
                     <li><a href="#{{comment.id}}edit_myModal" class="btn btn-small btn-primary" data-toggle="modal">{{
                         _('Edit')
                         }}</a></li>

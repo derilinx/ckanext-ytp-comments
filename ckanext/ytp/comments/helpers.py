@@ -1,6 +1,5 @@
-from webhelpers.html import HTML, literal, tags, tools
 from ckan import model
-from ckan.lib.helpers import *
+from ckan.plugins import toolkit
 
 
 def linked_user_comments(user, maxlength=0, avatar=20):
@@ -21,12 +20,12 @@ def linked_user_comments(user, maxlength=0, avatar=20):
         if maxlength and len(user.name) > maxlength:
             user_name = user_name[:maxlength] + '...'
 
-        return tags.literal(u'{icon} {link}'.format(
-            icon=gravatar(
+        return toolkit.h.literal(u'{icon} {link}'.format(
+            icon=toolkit.h.gravatar(
                 email_hash=user.email_hash,
                 size=avatar
             ),
-            link=tags.link_to(
+            link=toolkit.h.tags.link_to(
                 user_name,
                 url_for(controller='user', action='read', id=name)
             )

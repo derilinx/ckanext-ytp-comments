@@ -1,6 +1,6 @@
 import ckan.plugins as plugins
 from ckan.plugins import implements, toolkit
-import helpers
+from . import helpers
 
 import logging
 
@@ -8,22 +8,25 @@ log = logging.getLogger(__name__)
 
 
 class YtpCommentsPlugin(plugins.SingletonPlugin):
-    implements(plugins.IRoutes, inherit=True)
     implements(plugins.IConfigurer, inherit=True)
+    implements(plugins.IConfigurable)
     implements(plugins.IPackageController, inherit=True)
     implements(plugins.ITemplateHelpers, inherit=True)
     implements(plugins.IActions, inherit=True)
     implements(plugins.IAuthFunctions, inherit=True)
+    implements(plugins.IBlueprint)
 
     # IConfigurer
 
     def configure(self, config):
         log.debug("Configuring comments module")
+        from .model import init_tables
+        init_tables()
 
     def update_config(self, config):
         toolkit.add_template_directory(config, "templates")
         toolkit.add_public_directory(config, 'public')
-        toolkit.add_resource('public/javascript/', 'comments_js')
+        toolkit.add_resource('public/', 'comments')
 
     def get_helpers(self):
         return {
@@ -61,19 +64,9 @@ class YtpCommentsPlugin(plugins.SingletonPlugin):
         # TODO: append comments from model to pkg_dict
         return pkg_dict
 
-    # IRoutes
-
-    def before_map(self, map):
-        """
-            /dataset/NAME/comments/reply/PARENT_ID
-            /dataset/NAME/comments/add
-        """
-        controller = 'ckanext.ytp.comments.controller:CommentController'
-        map.connect('/dataset/{dataset_id}/comments/add', controller=controller, action='add')
-        map.connect('/dataset/{dataset_id}/comments/{comment_id}/edit', controller=controller, action='edit')
-        map.connect('/dataset/{dataset_id}/comments/{parent_id}/reply', controller=controller, action='reply')
-        map.connect('/dataset/{dataset_id}/comments/{comment_id}/delete', controller=controller, action='delete')
-        return map
+    def get_blueprint(self):
+        from .blueprint import blueprint
+        return blueprint
 
     def _get_comment_thread(self, dataset_name):
         import ckan.model as model

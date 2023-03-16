@@ -1,7 +1,7 @@
 import logging
-from ckan.common import _
-from ckan import logic
+from ckan.plugins import toolkit
 import ckanext.ytp.comments.model as comment_model
+_ = toolkit._
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def comment_update(context, data_dict):
         log.debug("User is not logged in")
         return {'success': False, 'msg': _('You must be logged in to add a comment')}
 
-    cid = logic.get_or_bust(data_dict, 'id')
+    cid = toolkit.get_or_bust(data_dict, 'id')
 
     comment = comment_model.Comment.get(cid)
     if not comment:

@@ -1,0 +1,15 @@
+import:
+  contents:
+    - javascript/comments.js
+  output: comments/comments_%(version)s.js
+  filters: rjsmin
+  extra:
+    preload:
+      - base/main
+
+
+
+
+
+
+

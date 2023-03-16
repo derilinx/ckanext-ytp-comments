@@ -1,8 +1,8 @@
 import logging
-from ckan.common import config
 import ckanext.ytp.comments.model as comment_model
-from ckan.lib.base import abort
-from ckan import logic
+from ckan.plugins import toolkit
+config = toolkit.config
+abort = toolkit.abort
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def thread_show(context, data_dict):
         return abort(404)
 
     data_dict['thread'] = thread
-    # logic.check_access("thread_show", context, data_dict)
+    # toolkit.check_access("thread_show", context, data_dict)
 
     # Dictize the thread and all the comments within it.
     thread_dict = thread.as_dict()
@@ -64,22 +64,22 @@ def thread_show(context, data_dict):
 
     if context.get('with_deleted') is not True:
         thread_dict['comments'] = [
-            c.as_dict() for c in comments.order_by('comment.creation_date desc').all()
+            c.as_dict() for c in comments.order_by(comment_model.Comment.creation_date.desc()).all()
         ]
     else:
         thread_dict['comments'] = [
-            c.as_dict(only_active_children=False) for c in comments.order_by('comment.creation_date desc').all()
+            c.as_dict(only_active_children=False) for c in comments.order_by(comment_model.Comment.creation_date.desc()).all()
         ]
 
     return thread_dict
 
 
 def comment_show(context, data_dict):
-    id = logic.get_or_bust(data_dict, 'id')
+    id = toolkit.get_or_bust(data_dict, 'id')
     comment = comment_model.Comment.get(id)
     if not comment:
         abort(404)
-    logic.check_access("comment_show", context, data_dict)
+    toolkit.check_access("comment_show", context, data_dict)
     data_dict['comment'] = comment
 
     return comment.as_dict()
@@ -88,7 +88,7 @@ def comment_show(context, data_dict):
 def comment_count(context, data_dict):
 
     # For now everybody is allowed to view count
-    # logic.check_access('comment_count', context, data_dict)
+    # toolkit.check_access('comment_count', context, data_dict)
     url = data_dict.get('url')
     id = data_dict.get('id')
     count = None

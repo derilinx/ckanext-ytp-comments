@@ -1,8 +1,7 @@
 import logging
-from pylons.i18n import _
 
 import ckan.authz as new_authz
-from ckan import logic
+from ckan.plugins.toolkit import get_or_bust, _
 import ckanext.ytp.comments.model as comment_model
 
 
@@ -18,15 +17,13 @@ def comment_delete(context, data_dict):
     if new_authz.is_sysadmin(user):
         return {'success': True}
 
-    cid = logic.get_or_bust(data_dict, 'id')
+    cid = get_or_bust(data_dict, 'id')
 
     comment = comment_model.Comment.get(cid)
     if not comment:
-        print "Comment doesn't exist"
         return {'success': False, 'msg': _('Comment does not exist')}
 
     if comment.user_id != userobj.id:
-        print "User is not the author of the comment"
         return {'success': False, 'msg': _('User is not the author of the comment')}
 
     return {'success': True}

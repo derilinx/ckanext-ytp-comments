@@ -1,14 +1,12 @@
 import datetime
 import ckanext.ytp.comments.model as comment_model
 import ckanext.ytp.comments.util as util
-from ckan import logic
 from pprint import pprint
 import logging
 import ckan.plugins.toolkit as toolkit
 import ckan.plugins as p
 from ckanext.ytp.comments import captcha
-from ckan.lib.base import c, request
-from ckan.common import config
+from ckan.plugins.toolkit import g, request, config, url_for
 
 log = logging.getLogger(__name__)
 
@@ -31,36 +29,27 @@ def notify_official(dataset, usrobj, comment=False):
     '''
     Notify a CKAN user that a comment has been successfully created.
     '''
-    # from pylons import config
-    from ckan.common import config
-
     # if not tk.asbool(config.get('ckanext.datarequests.send_emails')):
     #     return
-    site_url = config.get('ckan.site_url', '')
-    request_dataset_url = site_url + "/dataset/" + dataset.name
+    request_dataset_url = url_for('dataset.read', id=dataset, _external=True)
 
-    import ckan.lib.mailer
-
-    email_dict = dict()
-    email_dict['name'] = 'data.gov.ie'
-    officials_emails = ['jodie@derilinx.com', 'opendata@per.gov.ie']
+    recipient_name = 'data.gov.ie'
+    officials_emails = ['jodie@derilinx.com', '']
 
     if comment:
-        email_dict['subject'] = "New Comment on a Dataset on data.gov.ie"
-        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url, comment.subject)
+        subject = "New Comment on a Dataset on data.gov.ie"
+        body = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url, comment.subject)
     else:
-        email_dict['subject'] = "no subject"
-        email_dict['body'] = EMAIL_NOTIFY_OFFICIAL_STATUS_CREATE % request_dataset_url
+        subject = "no subject"
+        body = EMAIL_NOTIFY_OFFICIAL_STATUS_CREATE % request_dataset_url
 
     for email in officials_emails:
         if email:
-            email_dict['email'] = email
             try:
-                ckan.lib.mailer.mail_recipient(email_dict['name'], email_dict['email'],
-                                               email_dict['subject'], email_dict['body'])
+                toolkit.mail_recipient(recipient_name, email, subject, body)
                 log.info("Successfully notified official %s for dataset comment %s" % (email, dataset.id))
-            except ckan.lib.mailer.MailerException:
-                log.error("Failed to notify official %s for dataset comment %s" % (email, dataset.id))
+            except:
+                log.exception("Failed to notify official %s for dataset comment %s" % (email, dataset.id))
 
 
 def comment_create(context, data_dict):
@@ -75,11 +64,11 @@ def comment_create(context, data_dict):
         
     userobj = model.User.get('anonymous')
 
-    logic.check_access("comment_create", context, data_dict)
+    toolkit.check_access("comment_create", context, data_dict)
 
     # Validate that we have the required fields.
     if not all([data_dict.get('comment')]):
-        raise logic.ValidationError("Comment text is required")
+        raise toolkit.ValidationError("Comment text is required")
 
     thread_id = data_dict.get('thread_id')
 
@@ -90,24 +79,22 @@ def comment_create(context, data_dict):
             thread_id = thread.id if thread else None
 
     if not thread_id:
-        raise logic.ValidationError("Thread identifier or URL is required")
+        raise toolkit.ValidationError("Thread identifier or URL is required")
 
-    captcha.check(request, c)
+    captcha.check(request, g)
 
     # Cleanup the comment
     cleaned_comment = util.clean_input(data_dict.get('comment'))
 
     # Create the object
-    cmt = comment_model.Comment(thread_id=thread_id,
-
-                                comment=cleaned_comment)
-    print "Creating comment..."
+    cmt = comment_model.Comment(thread_id=thread_id, comment=cleaned_comment)
+    log.debug("Creating comment...")
     if userobj:
         cmt.user_id = userobj.id
     else:
         #annon_commenter user
         cmt.user_id = '0863c6bf-d7d8-485b-94b7-d50a11d5796d'
-    print cmt.user_id
+    log.debug("User id %s", cmt.user_id)
     cmt.subject = data_dict.get('subject', '')
 
     if 'creation_date' in context:

@@ -77,7 +77,7 @@
         }
 
     </style>
-    {% resource "comments_js/comments.js" %}
+    {% asset "comments/comments.js" %}
 
     {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
 
@@ -112,7 +112,7 @@
                 <textarea name="comment" class="form-control" placeholder="Your comment..." rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{'\n'}}{% endfor %}{% endif %}</textarea>
             </div>
             <div class="modal-footer">
-                {% if c.userobj %}
+                {% if g.userobj %}
                 <div class="form-user">
                     Comments may be moderated.
                 </div>
@@ -161,7 +161,7 @@
 
                     <ul class="links list-inline pull-right">
 
-                        {% if c.userobj.sysadmin %}
+                        {% if g.userobj.sysadmin %}
                         <li><a href="#{{comment.id}}reply_myModal" class="btn btn-xs btn-default"
                                data-toggle="modal">{{
                             _('Reply')
@@ -210,10 +210,10 @@
 
                         <ul class="links list-inline pull-right">
 
-                            {% if c.userobj.sysadmin %}
+                            {% if g.userobj.sysadmin %}
                             {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
                             {% endif %}
-                            {% if userobj and comment.user_id == userobj.id or c.userobj.sysadmin %}
+                            {% if g.userobj and comment.user_id == userobj.id or g.userobj.sysadmin %}
                             <li><a href="#{{comment.id}}edit_myModal" class="btn btn-xs btn-default"
                                    data-toggle="modal">{{
                                 _('Edit')

@@ -7,9 +7,11 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
 from ckan.plugins import toolkit
-from ckan.lib.base import model, config
+from ckan import model
+config = toolkit.config
 
-log = __import__('logging').getLogger(__name__)
+import logging
+log = logging.getLogger(__name__)
 
 Base = declarative_base()
 metadata = MetaData()
@@ -19,7 +21,7 @@ COMMENT_PENDING = "pending"
 
 
 def make_uuid():
-    return unicode(uuid.uuid4())
+    return str(uuid.uuid4())
 
 
 def acceptable_comment_on(objtype):
@@ -48,7 +50,7 @@ class CommentThread(Base):
         We are only interested in the path, so we will strip out
         everything else
         """
-        from urlparse import urlparse
+        from urllib.parse import urlparse
         parsed = urlparse(incoming)
 
         # Perhaps check on acceptable_comment_on()?
@@ -202,7 +204,6 @@ class Comment(Base):
             setattr(self, k, v)
 
         # Auto-set some values based on configuration
-        from pylons import config
         if toolkit.asbool(config.get('ckan.comments.moderation', 'true')):
             self.approval_status = COMMENT_PENDING
         else:
