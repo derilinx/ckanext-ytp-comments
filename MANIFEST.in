@@ -1,2 +1,3 @@
-recursive-include ckanext/ytp/comments/templates *
-recursive-include ckanext/ytp/comments/public *
+graft ckanext
+include README.md
+global-exclude *.py[co]

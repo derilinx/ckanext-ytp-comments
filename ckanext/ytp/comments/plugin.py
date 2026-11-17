@@ -1,82 +1,57 @@
-import ckan.plugins as plugins
-from ckan.plugins import implements, toolkit
-from . import helpers
-
 import logging
+
+import ckan.plugins as plugins
+from ckan.plugins import toolkit
+
+from ckanext.ytp.comments import helpers
+from ckanext.ytp.comments.blueprint import blueprint
+from ckanext.ytp.comments.logic.action import get_actions
+from ckanext.ytp.comments.logic.auth import get_auth_functions
 
 log = logging.getLogger(__name__)
 
 
 class YtpCommentsPlugin(plugins.SingletonPlugin):
-    implements(plugins.IConfigurer, inherit=True)
-    implements(plugins.IConfigurable)
-    implements(plugins.IPackageController, inherit=True)
-    implements(plugins.ITemplateHelpers, inherit=True)
-    implements(plugins.IActions, inherit=True)
-    implements(plugins.IAuthFunctions, inherit=True)
-    implements(plugins.IBlueprint)
+    plugins.implements(plugins.IConfigurer)
+    plugins.implements(plugins.IConfigDeclaration)
+    plugins.implements(plugins.ITemplateHelpers)
+    plugins.implements(plugins.IActions)
+    plugins.implements(plugins.IAuthFunctions)
+    plugins.implements(plugins.IBlueprint)
 
     # IConfigurer
-
-    def configure(self, config):
-        log.debug("Configuring comments module")
-        from .model import init_tables
-        init_tables()
-
     def update_config(self, config):
         toolkit.add_template_directory(config, "templates")
         toolkit.add_public_directory(config, 'public')
         toolkit.add_resource('public/', 'comments')
 
+    # IConfigDeclaration
+    def declare_config_options(self, declaration, key):
+        declaration.annotate("ckanext-ytp-comments")
+        declaration.declare_bool(key.ckan.comments.moderation, True)
+        declaration.declare_bool(
+            key.ckan.comments.moderation.first_only, True)
+        declaration.declare(
+            key.ckan.comments.annon_user, "anonymous").set_description(
+            "Name of the user that comments are posted as. If the user "
+            "does not exist, the site user is used.")
+        declaration.declare_list(
+            key.ckan.comments.notify_emails, ["jodie@derilinx.com"]
+        ).set_description(
+            "Email addresses to notify when a new comment is posted")
+
+    # ITemplateHelpers
     def get_helpers(self):
-        return {
-            'get_comment_thread': self._get_comment_thread,
-            'get_comment_count_for_dataset': self._get_comment_count_for_dataset,
-            'linked_user_comments': helpers.linked_user_comments,
-            'get_site_captcha': helpers.get_site_captcha
-        }
+        return helpers.get_helpers()
 
+    # IActions
     def get_actions(self):
-        from ckanext.ytp.comments.logic.action import get, create, delete, update
+        return get_actions()
 
-        return {
-            "comment_create": create.comment_create,
-            "thread_show": get.thread_show,
-            "comment_update": update.comment_update,
-            "comment_show": get.comment_show,
-            "comment_delete": delete.comment_delete,
-            "comment_count": get.comment_count
-        }
-
+    # IAuthFunctions
     def get_auth_functions(self):
-        from ckanext.ytp.comments.logic.auth import get, create, delete, update
+        return get_auth_functions()
 
-        return {
-            'comment_create': create.comment_create,
-            'comment_update': update.comment_update,
-            'comment_show': get.comment_show,
-            'comment_delete': delete.comment_delete,
-            "comment_count": get.comment_count
-        }
-    # IPackageController
-
-    def before_view(self, pkg_dict):
-        # TODO: append comments from model to pkg_dict
-        return pkg_dict
-
+    # IBlueprint
     def get_blueprint(self):
-        from .blueprint import blueprint
         return blueprint
-
-    def _get_comment_thread(self, dataset_name):
-        import ckan.model as model
-        from ckan.logic import get_action
-        url = '/dataset/%s' % dataset_name
-        return get_action('thread_show')({'model': model, 'with_deleted': False}, {'url': url})
-
-    def _get_comment_count_for_dataset(self, dataset_name):
-        import ckan.model as model
-        from ckan.logic import get_action
-        url = '/dataset/%s' % dataset_name
-        count = get_action('comment_count')({'model': model}, {'url': url})
-        return count
