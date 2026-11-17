@@ -1,36 +1,18 @@
-from ckan import model
-from ckan.plugins import toolkit
+from ckan.plugins import toolkit as tk
 
 
-def linked_user_comments(user, maxlength=0, avatar=20):
+def get_comment_thread(dataset_name):
+    url = '/dataset/%s' % dataset_name
+    return tk.get_action('thread_show')(
+        {'with_deleted': False}, {'url': url})
 
-    if not isinstance(user, model.User):
-        user_name = unicode(user)
-        user = model.User.get(user_name)
-        if not user:
-            return user_name
-    if user:
-        name = user.name if model.User.VALID_NAME.match(user.name) else user.id
-        displayname = user.display_name
-        user_name = user.name if model.User.VALID_NAME.match(user.name) else user.id
 
-        if maxlength and len(user.display_name) > maxlength:
-            displayname = displayname[:maxlength] + '...'
-
-        if maxlength and len(user.name) > maxlength:
-            user_name = user_name[:maxlength] + '...'
-
-        return toolkit.h.literal(u'{icon} {link}'.format(
-            icon=toolkit.h.gravatar(
-                email_hash=user.email_hash,
-                size=avatar
-            ),
-            link=toolkit.h.tags.link_to(
-                user_name,
-                url_for(controller='user', action='read', id=name)
-            )
-        ))
-    
-    
 def get_site_captcha():
-    return '6LcKQEsUAAAAAExrtWZWOKD_dfYSCMSbpXpmbTXF'
+    return tk.config.get("ckan.captcha_siteid")
+
+
+def get_helpers():
+    return {
+        'get_comment_thread': get_comment_thread,
+        'get_site_captcha': get_site_captcha,
+    }

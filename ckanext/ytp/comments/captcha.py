@@ -1,42 +1,49 @@
-import requests
+import logging
 import os
 
+import requests
+from flask import has_request_context
+
 import ckan.plugins.toolkit as tk
-config = tk.config
+
+log = logging.getLogger(__name__)
 
 CAPTCHA_API_URL = 'https://www.google.com/recaptcha/api/siteverify'
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def _check_captcha(response):
     if not response:
         return False
     params = {
-        'secret': config.get('ckan.captcha_secret'),
+        'secret': tk.config.get('ckan.captcha_secret'),
         'response': response
     }
-    res = requests.post(CAPTCHA_API_URL, params=params)
-    data = res.json()
+    try:
+        res = requests.post(CAPTCHA_API_URL, params=params, timeout=10)
+        data = res.json()
+    except (requests.RequestException, ValueError):
+        log.exception('Error checking the captcha')
+        return False
     # response: {success: true|false, error-codes: [...]
     # https://developers.google.com/recaptcha/docs/verify
-    logger.debug('captcha response: %s' % data)
+    log.debug('captcha response: %s', data)
     return data.get('success', False)
 
 
-def check(request, c):
-    """ Check the captcha if config is enabled.
+def check():
+    """Check the captcha of the current request if running in production.
 
-    side effects -- returns in c
+    Requests without a valid `g-recaptcha-response` value (including API
+    calls) are rejected. Calls made outside a web request (e.g. from the CLI)
+    are not checked.
 
-    :param: request the request object
-    :param: c context error dict
+    :raises: ValidationError if the captcha is not valid
     """
+    if os.environ.get('PRODUCTION', None) != 'true':
+        return
+    if not has_request_context():
+        return
 
-    if os.environ.get('PRODUCTION', None) == 'true':
-        answer = _check_captcha(request.POST.get('g-recaptcha-response', None))
-        if not answer:
-            c.errors['Captcha Failure'] = ['You failed to enter a valid captcha']
-            c.errors_summary['Captcha Failure'] = 'You failed to enter a valid captcha'
+    if not _check_captcha(tk.request.form.get('g-recaptcha-response')):
+        raise tk.ValidationError(
+            {'captcha': [tk._('You failed to enter a valid captcha')]})
