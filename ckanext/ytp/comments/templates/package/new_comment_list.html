@@ -1,304 +1,126 @@
-<section id="comments-section">
+{#
+Renders the comments of a dataset and the form to add new ones
 
-    <style>
+pkg_id - The id of the dataset
+pkg_name - The name of the dataset
 
-        #comments-section img {
-            height: 46px;
-            width: 46px;
-            margin-right: 10px;
-        }
+#}
+{% asset "comments/comments-css" %}
 
-        .comments-modal form {
-            border: 1px solid rgba(0, 0, 0, 0.3);
-            -webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-            -moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-            -webkit-background-clip: padding-box;
-            -moz-background-clip: padding-box;
-            background-clip: padding-box;
-            background-color: white;
-            margin-top: 30px;
-        }
+{% set thread = h.get_comment_thread(pkg_name) %}
 
-        #comments-section .panel-header {
-            background-color: #01aef0;
-            padding: 5px;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: white;
-            overflow: hidden;
-        }
+{% macro honeypot() %}
+  {# honey pot items. These are required to be empty #}
+  <input type="text" name="comment-email" id="comment-email" value="" autocomplete="off" tabindex="-1" aria-hidden="true"/>
+  <input type="text" name="comment-url" id="comment-url" value="" autocomplete="off" tabindex="-1" aria-hidden="true"/>
+{% endmacro %}
 
-        #comments-section .panel-footer {
-            background-color: white;
-            padding: 5px;
-            /*border-top: 2px dashed #01aef0;*/
-            overflow: hidden;
-            border: none;
-        }
-
-        #comments-section .panel-body {
-            background-color: white;
-            padding: 5px;
-        }
-
-        #comments-section .panel-comment {
-            background-color: white;
-            /*border: 1px solid rgba(0, 0, 0, 0.3);*/
-            /*-webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);*/
-            /*-moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);*/
-            /*box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);*/
-            /*-webkit-background-clip: padding-box;*/
-            /*-moz-background-clip: padding-box;*/
-            /*background-clip: padding-box;*/
-            padding: 0;
-            margin-left: 10px;
-            margin-right: 10px;
-        }
-
-        #comments-section .panel-reply {
-            margin-left: 50px;
-            margin-right: 15px;
-            margin-top: 5px;
-
-            background-color: white;
-            /*border: 1px solid rgba(0, 0, 0, 0.3);*/
-            /*-webkit-box-shadow: none !important;*/
-            /*-moz-box-shadow: none !important;*/
-            /*box-shadow: none !important;*/
-            /*-webkit-background-clip: padding-box;*/
-            /*-moz-background-clip: padding-box;*/
-            /*background-clip: padding-box;*/
-            padding: 0;
-        }
-
-        #comment-url, #comment-email {
-            display: none;
-        }
-
-    </style>
-    {% asset "comments/comments.js" %}
-
-    {% macro comment_form(values={}, empty=False, hidden=True, prefix="", action="add") %}
-
-    <!-- Modal -->
-
-    <div id="{{values.id}}{{prefix}}myModal" class="modal comments-modal col-sm-6 col-sm-offset-3" tabindex="-1"
-         role="dialog"
-         aria-labelledby="myModalLabel"
-         aria-hidden="true">
-        <form id="{{ prefix + values.id }}" class="form"
-              action="{{ pkg_id }}/comments/{% if values.id %}{{ values.id }}/{% endif %}{{ action }}"
-              method="POST">
-
-
-            <div class="modal-header">
-                {# <label for="subject">{{ _('Subject') }}</label>
-                <input type="text" class="form-subject" placeholder="Subject..." name="subject" {% if not empty
-                       %}value="{{ values.subject }}"
-                       {% endif %}/>
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
-                <span class="form-help">(optional subject for your comment)</span> #}
-            </div>
-            <div class="modal-body">
-                <!--<label for="comment">{{ _('Comment') }}</label>-->
-                {% set unescaped_content = values.content.split('<br/>') %}
-
-                {# honey pot items. These are required to be empty #}
-                <input type="text" name="comment-email" id="comment-email" value=""/>
-                <input type="text" name="comment-url" id="comment-url" value=""/>
-
-
-                <textarea name="comment" class="form-control" placeholder="Your comment..." rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{'\n'}}{% endfor %}{% endif %}</textarea>
-            </div>
-            <div class="modal-footer">
-                {% if g.userobj %}
-                <div class="form-user">
-                    Comments may be moderated.
-                </div>
-                {% endif %}
-                <div class="form-actions">
-                    <input type="submit" class="btn btn-xs btn-default" value="{{ _('Post Comment') }}"/>
-                    <button class="btn btn-xs btn-danger" data-dismiss="modal" aria-hidden="true">X</button>
-
-                </div>
-            </div>
+{% macro comment_form_modal(comment, modal_id, form_action, title, empty=False) %}
+  <div id="{{ modal_id }}" class="modal fade comments-modal" tabindex="-1" aria-labelledby="{{ modal_id }}_label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form class="form" method="POST" action="{{ form_action }}">
+          {{ h.csrf_input() }}
+          <div class="modal-header">
+            <h5 class="modal-title" id="{{ modal_id }}_label">{{ title }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+          </div>
+          <div class="modal-body">
+            {{ honeypot() }}
+            <input type="text" class="form-control form-subject mb-2" placeholder="{{ _('Subject...') }}" name="subject" {% if not empty %}value="{{ comment.subject or '' }}"{% endif %}/>
+            {% set unescaped_content = (comment.content or '').split('<br/>') %}
+            <textarea name="comment" class="form-control" placeholder="{{ _('Your comment...') }}" rows="6">{% if not empty %}{% for line in unescaped_content %}{{ line | striptags }}{{ '\n' }}{% endfor %}{% endif %}</textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-default" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+            <button type="submit" class="btn btn-sm btn-primary">{{ _('Post Comment') }}</button>
+          </div>
         </form>
+      </div>
     </div>
+  </div>
+{% endmacro %}
 
-    {% endmacro %}
-
-
-    {% set thread = h.get_comment_thread(pkg_name) %}
-
-
-    {% macro comment_table(thread) %}
-    <div class="comments-container row" data-module="">
-
-        {% for comment in thread.comments %}
-        {% if comment.state != 'deleted' %}
-
-        <div class="panel panel-comment col-sm-12">
-            <div class="comment-subject ">
-                <div class="panel-header">{{ comment.subject }}
-                    <small class="pull-right comment-date">Created {{ h.render_datetime(comment.creation_date,
-                        "%m.%d.%Y %H:%M") }}
-                    </small>
-                </div>
-            </div>
-            <div class="comment-content panel-body">
-                <!--<img src="/img/noavatar92.png" alt="" class="pull-left">-->
-                <p>{{ comment.content|safe }}</p>
-            </div>
-            <div class="comment-foot panel-footer">
-                <div>{% if comment.state == 'active' %}
-                    {% if comment.modified_date %}
-                    <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
-                            "%m.%d.%Y at %H:%M") }}
-                        </span>
-                    {% endif %}
-
-
-                    <ul class="links list-inline pull-right">
-
-                        {% if g.userobj.sysadmin %}
-                        <li><a href="#{{comment.id}}reply_myModal" class="btn btn-xs btn-default"
-                               data-toggle="modal">{{
-                            _('Reply')
-                            }}</a></li>
-                        {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                        <li><a href="#{{comment.id}}edit_myModal" class="btn btn-xs btn-default"
-                               data-toggle="modal">{{
-                            _('Edit')
-                            }}</a></li>
-                        {{ comment_form(comment, prefix='edit_', action='edit') }}
-                        <li><a class="btn btn-xs btn-danger"
-                               href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i
-                                class="fa fa-trash"></i></a>
-                        </li>
-                        {% endif %}
-
-
-                    </ul>
-                    {% endif %}
-                </div>
-            </div>
-
-
-            {% for comment in comment.comments %}
-            {% if comment.state != 'deleted' %}
-
-            <div class="panel panel-comment panel-reply">
-                <div class="comment-subject">
-                    <div class="panel-header">{{ comment.subject }}
-                        <small class="pull-right comment-date">Created {{ h.render_datetime(comment.creation_date,
-                            "%m.%d.%Y %H:%M") }}
-                        </small>
-                    </div>
-                </div>
-                <div class="comment-content panel-body">
-                    <div>{{ comment.content|safe }}</div>
-                </div>
-                <div class="comment-foot panel-footer">
-                    <div>{% if comment.state == 'active' %}
-                        {% if comment.modified_date %}
-                        <span class="comment-date">{{ _('Last edited: ') }}{{ h.render_datetime(comment.modified_date,
-                            "%m.%d.%Y at %H:%M") }}
-                        </span>
-                        {% endif %}
-
-
-                        <ul class="links list-inline pull-right">
-
-                            {% if g.userobj.sysadmin %}
-                            {{ comment_form(comment, empty=True, prefix='reply_', action='reply') }}
-                            {% endif %}
-                            {% if g.userobj and comment.user_id == userobj.id or g.userobj.sysadmin %}
-                            <li><a href="#{{comment.id}}edit_myModal" class="btn btn-xs btn-default"
-                                   data-toggle="modal">{{
-                                _('Edit')
-                                }}</a></li>
-                            {{ comment_form(comment, prefix='edit_', action='edit') }}
-                            <li><a class="btn btn-xs btn-danger"
-                                   href="/dataset/{{ pkg_id }}/comments/{{ comment.id }}/delete"><i
-                                    class="fa fa-trash"></i></a>
-                            </li>
-                            {% endif %}
-
-
-                        </ul>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-
-            </div>
-
-            {% endif %}
-            {% endfor %}
-
+{% macro comment_card(comment, is_reply=False) %}
+  <div class="card comment{% if is_reply %} comment-reply{% endif %}" id="comment_{{ comment.id }}">
+    <div class="card-header comment-subject d-flex justify-content-between">
+      <span>{{ comment.subject }}</span>
+      <small class="comment-date">{{ _('Created') }} {{ h.render_datetime(comment.creation_date, "%m.%d.%Y %H:%M") }}</small>
+    </div>
+    <div class="card-body comment-content">
+      {{ comment.content|safe }}
+    </div>
+    {% set can_reply = not is_reply and current_user.is_authenticated and current_user.sysadmin %}
+    {% set can_edit = h.check_access('comment_update', {'id': comment.id}) %}
+    {% set can_delete = h.check_access('comment_delete', {'id': comment.id}) %}
+    {% if comment.modified_date or can_reply or can_edit or can_delete %}
+      <div class="card-footer comment-foot d-flex justify-content-between align-items-center">
+        <span class="comment-date">
+          {% if comment.modified_date %}
+            {{ _('Last edited:') }} {{ h.render_datetime(comment.modified_date, "%m.%d.%Y at %H:%M") }}
+          {% endif %}
+        </span>
+        <div class="comment-actions">
+          {% if can_reply %}
+            <button type="button" class="btn btn-sm btn-default" data-bs-toggle="modal" data-bs-target="#reply_{{ comment.id }}">{{ _('Reply') }}</button>
+          {% endif %}
+          {% if can_edit %}
+            <button type="button" class="btn btn-sm btn-default" data-bs-toggle="modal" data-bs-target="#edit_{{ comment.id }}">{{ _('Edit') }}</button>
+          {% endif %}
+          {% if can_delete %}
+            <a class="btn btn-sm btn-danger" href="{{ h.url_for('comments.delete', dataset_id=pkg_id, comment_id=comment.id) }}"
+               title="{{ _('Delete') }}" aria-label="{{ _('Delete') }}"
+               data-module="confirm-action" data-module-content="{{ _('Are you sure you want to delete this comment?') }}"><i class="fa fa-trash"></i></a>
+          {% endif %}
         </div>
-    </div>
-    {% endmacro %}
+      </div>
+      {% if can_reply %}
+        {{ comment_form_modal(comment, 'reply_' ~ comment.id, h.url_for('comments.reply', dataset_id=pkg_id, parent_id=comment.id), _('Reply'), empty=True) }}
+      {% endif %}
+      {% if can_edit %}
+        {{ comment_form_modal(comment, 'edit_' ~ comment.id, h.url_for('comments.edit', dataset_id=pkg_id, comment_id=comment.id), _('Edit comment')) }}
+      {% endif %}
+    {% endif %}
+  </div>
+{% endmacro %}
 
+<section id="comments-section">
+  <h3 id="comments" class="d-flex justify-content-between align-items-center">
+    <span>{{ _('Comments') }} [{{ thread.comments|length }}]</span>
+    <button type="button" class="btn btn-default" data-bs-toggle="collapse" data-bs-target="#form-collapse" aria-expanded="false" aria-controls="form-collapse">
+      {{ _('Post Comment') }}
+    </button>
+  </h3>
 
-    <div class="row-fluid">
-        <div class="chev-row" data-toggle="collapse" data-target="#comment-collapse">
-            <h3 id="comments">{{ _('Comments') }} [{{thread.comments|length}} <i class="fa fa-chevron-down"></i>]
-                <button data-toggle="collapse" data-target="#form-collapse" class="btn btn-default">Post Comment
-                </button>
-            </h3>
+  <div id="form-collapse" class="collapse">
+    <form class="form form-comment" action="{{ h.url_for('comments.add', dataset_id=pkg_id) }}" method="POST">
+      {{ h.csrf_input() }}
+      <div class="form-controls">
+        {{ honeypot() }}
+        <input type="text" placeholder="{{ _('Subject...') }}" class="form-control form-subject mb-2" name="subject"/>
+        <textarea name="comment" placeholder="{{ _('Your comment, max length 300 words...') }}" class="form-control" rows="4"></textarea>
+      </div>
+      <div id="g-recaptcha" class="g-recaptcha mt-2" data-sitekey="{{ h.get_site_captcha() }}"></div>
+      <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+      <div class="form-actions text-end mt-2 mb-3">
+        <button type="reset" class="btn btn-sm btn-default">{{ _('Clear') }}</button>
+        <button type="submit" class="btn btn-sm btn-primary">{{ _('Post Comment') }}</button>
+      </div>
+    </form>
+  </div>
 
-        </div>
-    </div>
-
-    <div class="row-fluid">
-        <div id="form-collapse" class="collapse">
-            <form class="form form-comment" action="{{ pkg_id }}/comments/add" method="POST">
-                <div class="form-controls">
-                    {# honey pot items. These are required to be empty #}
-                    <input type="text" name="comment-email" id="comment-email" value=""/>
-                    <input type="text" name="comment-url" id="comment-url" value=""/>
-                    <input type="text" placeholder="Subject..." class="form-subject" name="subject"/>
-
-                    <textarea name="comment" placeholder="Your comment, max length 300 words..." class="form-control"
-                              rows="4"></textarea>
-                </div>
-                <div class="pull-right" style="margin-bottom: 16px;">
-                    <input type="reset" class="btn btn-xs" value="{{ _('Clear') }}"/>
-                    <input type="submit" class="btn btn-xs btn-default" value="{{ _('Post Comment') }}"/>
-                    <br>
-                </div>
-                <div id="g-recaptcha" class="g-recaptcha" data-sitekey="{{ h.get_site_captcha() }}"
-                     style="margin-bottom:12px;"></div>
-                <script src='https://www.google.com/recaptcha/api.js'></script>
-
-
-            </form>
-        </div>
-    </div>
-    <div class="row-fluid">
-        <div id="" class="comment-container">
-            {% if thread.comments | length != 0 %}
-            {{ comment_table(thread) }}
-            {% else %}
-            <div class="no-comment row-fluid">
-                <div class="chev-row" data-toggle="collapse" data-target="#form-collapse">
-                    <div class="span4 col-md-4">
-                        <p class="no-comments">Be the first to comment
-                        </p>
-                    </div>
-                    <!--<div class="span3 col-md-3">-->
-                    <!--<h4 class="chev-btn"><i class="chev-icon fa fa-chevron-down fa-2x"></i></h4>-->
-                    <!--</div>-->
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-
+  <div class="comment-container">
+    {% if thread.comments %}
+      {% for comment in thread.comments %}
+        {{ comment_card(comment) }}
+        {% for reply in comment.comments %}
+          {{ comment_card(reply, is_reply=True) }}
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      <p class="no-comments">
+        <a href="#form-collapse" data-bs-toggle="collapse" role="button" aria-controls="form-collapse">{{ _('Be the first to comment') }}</a>
+      </p>
+    {% endif %}
+  </div>
 </section>
-
-

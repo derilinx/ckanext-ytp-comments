@@ -1,15 +1,4 @@
-import:
+comments-css:
+  output: comments/%(version)s_comments.css
   contents:
-    - javascript/comments.js
-  output: comments/comments_%(version)s.js
-  filters: rjsmin
-  extra:
-    preload:
-      - base/main
-
-
-
-
-
-
-
+    - comments.css

@@ -1,0 +1,27 @@
+#comments-section .comment {
+  margin-bottom: 10px;
+}
+
+#comments-section .comment-reply {
+  margin-left: 50px;
+}
+
+#comments-section .comment .card-header {
+  background-color: #01aef0;
+  color: white;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+#comments-section .comment .card-footer {
+  background-color: white;
+  border-top: none;
+}
+
+#comments-section .comment-actions .btn {
+  margin-left: 4px;
+}
+
+#comment-url, #comment-email {
+  display: none;
+}

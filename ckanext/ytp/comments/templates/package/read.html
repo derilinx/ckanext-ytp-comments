@@ -1,5 +1,6 @@
 {% ckan_extends %}
+
 {% block primary_content_inner %}
-    {{ super() }}
-    {% snippet "package/new_comment_list.html", pkg_id=pkg.id, pkg_name=pkg.name, userobj=g.userobj %}
+  {{ super() }}
+  {% snippet "package/new_comment_list.html", pkg_id=pkg.id, pkg_name=pkg.name %}
 {% endblock %}
