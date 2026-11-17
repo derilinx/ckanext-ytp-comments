@@ -1,7 +1,12 @@
-# this is a namespace package
-try:
-    import pkg_resources
-    pkg_resources.declare_namespace(__name__)
-except ImportError:
-    import pkgutil
-    __path__ = pkgutil.extend_path(__path__, __name__)
+from ckanext.ytp.comments.logic.auth import create, delete, get, update
+
+
+def get_auth_functions():
+    return {
+        'comment_create': create.comment_create,
+        'comment_update': update.comment_update,
+        'comment_show': get.comment_show,
+        'comment_delete': delete.comment_delete,
+        'comment_count': get.comment_count,
+        'thread_show': get.thread_show,
+    }

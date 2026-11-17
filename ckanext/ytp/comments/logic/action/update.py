@@ -1,25 +1,29 @@
 import datetime
+
+from ckan import model
+from ckan.plugins import toolkit as tk
+
 import ckanext.ytp.comments.model as comment_model
 import ckanext.ytp.comments.util as util
-from ckan.plugins import toolkit
-import logging
-
-log = logging.getLogger(__name__)
 
 
 def comment_update(context, data_dict):
-    model = context['model']
+    '''Update a comment
 
-    toolkit.check_access("comment_update", context, data_dict)
+    :param id: the id of the comment
+    :param comment: the comment text
+    :param subject: the subject of the comment (optional)
+    '''
+    tk.check_access("comment_update", context, data_dict)
 
-    cid = toolkit.get_or_bust(data_dict, 'id')
+    cid = tk.get_or_bust(data_dict, 'id')
     comment = comment_model.Comment.get(cid)
     if not comment:
-        toolkit.abort(404)
+        raise tk.ObjectNotFound(tk._('Comment not found'))
 
     # Validate that we have the required fields.
-    if not all([data_dict.get('comment')]):
-        raise toolkit.ValidationError("Comment text is required")
+    if not data_dict.get('comment'):
+        raise tk.ValidationError({'comment': [tk._('Missing value')]})
 
     # Cleanup the comment
     cleaned_comment = util.clean_input(data_dict.get('comment'))

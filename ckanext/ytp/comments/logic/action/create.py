@@ -1,12 +1,12 @@
 import datetime
+import logging
+
+from ckan import model
+from ckan.plugins import toolkit as tk
+
 import ckanext.ytp.comments.model as comment_model
 import ckanext.ytp.comments.util as util
-from pprint import pprint
-import logging
-import ckan.plugins.toolkit as toolkit
-import ckan.plugins as p
 from ckanext.ytp.comments import captcha
-from ckan.plugins.toolkit import g, request, config, url_for
 
 log = logging.getLogger(__name__)
 
@@ -25,80 +25,85 @@ Have a great day!
 """
 
 
-def notify_official(dataset, usrobj, comment=False):
+def notify_official(thread, comment):
     '''
-    Notify a CKAN user that a comment has been successfully created.
+    Notify the site officials that a comment has been created.
     '''
-    # if not tk.asbool(config.get('ckanext.datarequests.send_emails')):
-    #     return
-    request_dataset_url = url_for('dataset.read', id=dataset, _external=True)
+    thread_url = tk.config.get('ckan.site_url').rstrip('/') + thread.url
 
     recipient_name = 'data.gov.ie'
-    officials_emails = ['jodie@derilinx.com', '']
+    subject = "New Comment on a Dataset on data.gov.ie"
+    body = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(
+        comment.comment, thread_url, comment.subject)
 
-    if comment:
-        subject = "New Comment on a Dataset on data.gov.ie"
-        body = EMAIL_NOTIFY_OFFICIAL_COMMENT_CREATE.format(comment.comment, request_dataset_url, comment.subject)
-    else:
-        subject = "no subject"
-        body = EMAIL_NOTIFY_OFFICIAL_STATUS_CREATE % request_dataset_url
+    for email in tk.config.get('ckan.comments.notify_emails'):
+        try:
+            tk.mail_recipient(recipient_name, email, subject, body)
+            log.info(
+                "Successfully notified official %s for comment %s",
+                email, comment.id)
+        except Exception:
+            log.exception(
+                "Failed to notify official %s for comment %s",
+                email, comment.id)
 
-    for email in officials_emails:
-        if email:
-            try:
-                toolkit.mail_recipient(recipient_name, email, subject, body)
-                log.info("Successfully notified official %s for dataset comment %s" % (email, dataset.id))
-            except:
-                log.exception("Failed to notify official %s for dataset comment %s" % (email, dataset.id))
+
+def _get_comments_user():
+    '''
+    All comments are posted as the user defined in `ckan.comments.annon_user`,
+    or the site user if it does not exist.
+    '''
+    user = model.User.get(tk.config.get('ckan.comments.annon_user'))
+    if not user:
+        site_user = tk.get_action('get_site_user')({'ignore_auth': True}, {})
+        user = model.User.get(site_user['name'])
+    return user
 
 
 def comment_create(context, data_dict):
-    pprint(data_dict)
-    pprint(context)
-    model = context['model']
-    user = context['user']
-    package = context['package']
+    '''Create a comment on a thread
 
-    if (not user) or (user != 'admin'):
-        user = config.get('ckan.comments.annon_user')
-        
-    userobj = model.User.get('anonymous')
-
-    toolkit.check_access("comment_create", context, data_dict)
+    :param comment: the comment text
+    :param subject: the subject of the comment (optional)
+    :param thread_id: the id of the thread to add the comment to
+    :param url: alternatively to `thread_id`, the URL of the commented
+        object, e.g. ``/dataset/<name>``. A thread for it will be created if
+        it does not exist.
+    :param parent_id: the id of the comment this is a reply to (optional)
+    '''
+    tk.check_access("comment_create", context, data_dict)
 
     # Validate that we have the required fields.
-    if not all([data_dict.get('comment')]):
-        raise toolkit.ValidationError("Comment text is required")
+    if not data_dict.get('comment'):
+        raise tk.ValidationError({'comment': [tk._('Missing value')]})
 
-    thread_id = data_dict.get('thread_id')
+    thread = None
+    if data_dict.get('thread_id'):
+        thread = comment_model.CommentThread.get(data_dict['thread_id'])
+    elif data_dict.get('url'):
+        thread = comment_model.CommentThread.from_url(data_dict['url'])
 
-    if not thread_id:
-        url = data_dict.get('url')
-        if url:
-            thread = comment_model.CommentThread.from_url(url)
-            thread_id = thread.id if thread else None
+    if not thread:
+        raise tk.ValidationError(
+            {'thread_id': [tk._('Thread identifier or URL is required')]})
 
-    if not thread_id:
-        raise toolkit.ValidationError("Thread identifier or URL is required")
-
-    captcha.check(request, g)
+    captcha.check()
 
     # Cleanup the comment
     cleaned_comment = util.clean_input(data_dict.get('comment'))
 
-    # Create the object
-    cmt = comment_model.Comment(thread_id=thread_id, comment=cleaned_comment)
-    log.debug("Creating comment...")
-    if userobj:
-        cmt.user_id = userobj.id
-    else:
-        #annon_commenter user
-        cmt.user_id = '0863c6bf-d7d8-485b-94b7-d50a11d5796d'
-    log.debug("User id %s", cmt.user_id)
-    cmt.subject = data_dict.get('subject', '')
+    user = _get_comments_user()
+
+    cmt = comment_model.Comment(
+        thread_id=thread.id,
+        comment=cleaned_comment,
+        user_id=user.id,
+        subject=data_dict.get('subject', ''),
+    )
 
     if 'creation_date' in context:
-        cmt.creation_date = datetime.datetime.fromtimestamp(context['creation_date'])
+        cmt.creation_date = datetime.datetime.fromtimestamp(
+            context['creation_date'])
 
     # Check if there is a parent ID and that it is valid
     # TODO, validity in this case includes checking parent is not
@@ -115,7 +120,6 @@ def comment_create(context, data_dict):
     model.Session.commit()
 
     # Notify open data team
-
-    notify_official(package, userobj, comment=cmt)
+    notify_official(thread, cmt)
 
     return cmt.as_dict()

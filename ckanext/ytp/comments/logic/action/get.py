@@ -1,25 +1,26 @@
-import logging
+from ckan import model
+from ckan.plugins import toolkit as tk
+
 import ckanext.ytp.comments.model as comment_model
-from ckan.plugins import toolkit
-config = toolkit.config
-abort = toolkit.abort
-
-log = logging.getLogger(__name__)
 
 
+@tk.side_effect_free
 def thread_show(context, data_dict):
     """
-    Returns the content of a thread, based on a url. The url
-    parameter MUST be present in the data_dict.
-    with_deleted (boolean) - Also show deleted comments (requires sysadmin)
+    Returns the content of a thread, based on a url or id. If a url is
+    provided and the thread does not exist, it will be created.
+
+    :param url: the URL of the commented object, e.g. ``/dataset/<name>``
+    :param id: the id of the thread
+
+    Context options:
+
+    with_deleted (boolean) - Also show deleted comments
+    approved_only (boolean) - Only show approved comments
     offset (int) - The number of comments to offset in the threads comment list
     limit (int) - Total number of comments to return.
     """
-
-    model = context['model']
-   
-    if not context.get('user', ''):
-        context['user'] = config.get('ckan.comments.annon_user')
+    tk.check_access("thread_show", context, data_dict)
 
     url = data_dict.get('url')
     id = data_dict.get('id')
@@ -31,14 +32,12 @@ def thread_show(context, data_dict):
         thread = comment_model.CommentThread.get(id)
 
     if not thread:
-        return abort(404)
-
-    data_dict['thread'] = thread
-    # toolkit.check_access("thread_show", context, data_dict)
+        raise tk.ObjectNotFound(tk._('Thread not found'))
 
     # Dictize the thread and all the comments within it.
     thread_dict = thread.as_dict()
-    # Add the top level comments from the thread in order to the following list.
+    # Add the top level comments from the thread in order to the
+    # following list.
     comments = model.Session.query(comment_model.Comment). \
         filter(comment_model.Comment.thread_id == thread.id)
 
@@ -48,57 +47,62 @@ def thread_show(context, data_dict):
         comments = comments.filter(comment_model.Comment.approval_status ==
                                    comment_model.COMMENT_APPROVED)
 
-    if context.get('with_deleted') is not True:
+    with_deleted = context.get('with_deleted') is True
+    if not with_deleted:
         # TODO: Restrict to sysadmin
         comments = comments.filter(comment_model.Comment.state == 'active')
 
-    # We only want the top-level comments because sub-comments will be retrieved in the
-    # c.as_dict call
-    comments = comments.filter(comment_model.Comment.parent_id == None)  # noqa
+    # We only want the top-level comments because sub-comments will be
+    # retrieved in the c.as_dict call
+    comments = comments.filter(
+        comment_model.Comment.parent_id == None)  # noqa: E711
+
+    comments = comments.order_by(comment_model.Comment.creation_date.desc())
 
     if isinstance(context.get('offset'), int):
-        comments = comments.offset(int(context.get('offset')))
+        comments = comments.offset(context['offset'])
 
     if isinstance(context.get('limit'), int):
-        comments = comments.limit(int(context.get('limit')))
+        comments = comments.limit(context['limit'])
 
-    if context.get('with_deleted') is not True:
-        thread_dict['comments'] = [
-            c.as_dict() for c in comments.order_by(comment_model.Comment.creation_date.desc()).all()
-        ]
-    else:
-        thread_dict['comments'] = [
-            c.as_dict(only_active_children=False) for c in comments.order_by(comment_model.Comment.creation_date.desc()).all()
-        ]
+    thread_dict['comments'] = [
+        c.as_dict(only_active_children=not with_deleted)
+        for c in comments.all()
+    ]
 
     return thread_dict
 
 
+@tk.side_effect_free
 def comment_show(context, data_dict):
-    id = toolkit.get_or_bust(data_dict, 'id')
+    '''Return a comment, including its replies
+
+    :param id: the id of the comment
+    '''
+    tk.check_access("comment_show", context, data_dict)
+
+    id = tk.get_or_bust(data_dict, 'id')
     comment = comment_model.Comment.get(id)
     if not comment:
-        abort(404)
-    toolkit.check_access("comment_show", context, data_dict)
-    data_dict['comment'] = comment
+        raise tk.ObjectNotFound(tk._('Comment not found'))
 
     return comment.as_dict()
 
 
+@tk.side_effect_free
 def comment_count(context, data_dict):
+    '''Return the number of active comments on a thread
 
-    # For now everybody is allowed to view count
-    # toolkit.check_access('comment_count', context, data_dict)
+    :param url: the URL of the commented object, e.g. ``/dataset/<name>``
+    :param id: alternatively, the id of the thread
+    '''
+    tk.check_access('comment_count', context, data_dict)
+
     url = data_dict.get('url')
     id = data_dict.get('id')
-    count = None
     if url:
-        count = comment_model.CommentThread.count_from_url(url)
+        return comment_model.CommentThread.count_from_url(url)
+    if id:
+        return comment_model.CommentThread.count(id)
 
-    if count is None and id:
-        count = comment_model.CommentThread.count(id)
-
-    if count is None:
-        return abort(404)
-
-    return count
+    raise tk.ValidationError({'url': [tk._('Missing value')]})

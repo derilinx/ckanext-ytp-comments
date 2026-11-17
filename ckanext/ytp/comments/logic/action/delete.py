@@ -1,21 +1,20 @@
-import logging
-import ckanext.ytp.comments.model as comment_model
-from ckan.plugins import toolkit
+from ckan import model
+from ckan.plugins import toolkit as tk
 
-log = logging.getLogger(__name__)
+import ckanext.ytp.comments.model as comment_model
 
 
 def comment_delete(context, data_dict):
-    model = context['model']
+    '''Delete a comment (sets its state to "deleted")
 
-    toolkit.check_access("comment_delete", context, data_dict)
+    :param id: the id of the comment
+    '''
+    tk.check_access("comment_delete", context, data_dict)
 
-    # Comment should either be set state=='deleted' if no children,
-    # otherwise content should be set to withdrawn text
-    id = toolkit.get_or_bust(data_dict, 'id')
-    comment = comment_model.Comment.get(id)
+    cid = tk.get_or_bust(data_dict, 'id')
+    comment = comment_model.Comment.get(cid)
     if not comment:
-        toolkit.abort(404)
+        raise tk.ObjectNotFound(tk._('Comment not found'))
 
     comment.state = 'deleted'
 

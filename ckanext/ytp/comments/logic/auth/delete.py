@@ -1,29 +1,6 @@
-import logging
-
-import ckan.authz as new_authz
-from ckan.plugins.toolkit import get_or_bust, _
-import ckanext.ytp.comments.model as comment_model
-
-
-log = logging.getLogger(__name__)
+from ckanext.ytp.comments.logic.auth.utils import user_is_comment_author
 
 
 def comment_delete(context, data_dict):
-    model = context['model']
-    user = context['user']
-
-    userobj = model.User.get(user)
-    # If sysadmin.
-    if new_authz.is_sysadmin(user):
-        return {'success': True}
-
-    cid = get_or_bust(data_dict, 'id')
-
-    comment = comment_model.Comment.get(cid)
-    if not comment:
-        return {'success': False, 'msg': _('Comment does not exist')}
-
-    if comment.user_id != userobj.id:
-        return {'success': False, 'msg': _('User is not the author of the comment')}
-
-    return {'success': True}
+    # Sysadmins bypass this check
+    return user_is_comment_author(context, data_dict)
