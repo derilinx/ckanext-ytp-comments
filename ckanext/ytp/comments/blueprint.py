@@ -1,78 +1,123 @@
-from ckan.logic import check_access, get_action, clean_dict, tuplize_dict, ValidationError, parse_params
-from ckan.lib.navl.dictization_functions import unflatten
-from ckan.plugins import toolkit
+import logging
 
-from flask import Blueprint, request
+from flask import Blueprint
+
+from ckan.plugins import toolkit as tk
+
+log = logging.getLogger(__name__)
 
 blueprint = Blueprint('comments', __name__)
 
-@blueprint.route('/dataset/<dataset_id>/comments/add', methods=["POST"])
+MAX_WORDS = 300
+
+
+def _get_dataset(dataset_id):
+    try:
+        return tk.get_action('package_show')({}, {'id': dataset_id})
+    except tk.ObjectNotFound:
+        return tk.abort(404, tk._('Dataset not found'))
+    except tk.NotAuthorized:
+        return tk.abort(403, tk._('Not authorized to see this dataset'))
+
+
+def _redirect_to_dataset(dataset, comment_id=None):
+    url = tk.h.url_for('dataset.read', id=dataset['name'])
+    if comment_id:
+        url += '#comment_%s' % comment_id
+    return tk.redirect_to(url)
+
+
+def _error_message(error):
+    return ' '.join(
+        '; '.join(msgs) if isinstance(msgs, list) else str(msgs)
+        for msgs in error.error_dict.values()
+    )
+
+
+@blueprint.route('/dataset/<dataset_id>/comments/add', methods=['POST'])
 def add(dataset_id):
     return _add_or_reply(dataset_id)
 
-@blueprint.route('/dataset/<dataset_id>/comments/<comment_id>/edit', methods=["POST"])
-def edit(dataset_id, comment_id):
-    context = {}
-    # Auth check to make sure the user can see this package
 
-    check_access('package_show', context, {'id': dataset_id})
-
-    pkg_dict = get_action('package_show')(context, {'id': dataset_id})
-
-
-    data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
-    data_dict['id'] = comment_id
-
-    res = get_action('comment_update')(context, data_dict)
-    return toolkit.redirect_to('/dataset/%s#comment_%s' % (pkg_dict['name'], res['id']))
-
-
-@blueprint.route('/dataset/<dataset_id>/comments/<parent_id>/reply', methods=["POST"])
+@blueprint.route(
+    '/dataset/<dataset_id>/comments/<parent_id>/reply', methods=['POST'])
 def reply(dataset_id, parent_id):
     return _add_or_reply(dataset_id, parent_id)
 
-def _add_or_reply(dataset_id, parent=None):
+
+def _add_or_reply(dataset_id, parent_id=None):
     """
     Allows the user to add a comment to an existing dataset
     """
 
     # First, kill any spam in the honeypot fields
-    if request.form.get('comment-email', False) or \
-            request.form.get('comment-url', False):
-        log.error("SPAM post rejected w/email,url: %s", request.form)
-        toolkit.abort(403, 'You failed to enter a valid captcha')
+    if tk.request.form.get('comment-email') or \
+            tk.request.form.get('comment-url'):
+        log.error("SPAM post rejected w/email,url: %s", tk.request.form)
+        return tk.abort(403, tk._('You failed to enter a valid captcha'))
 
-    context = {}
+    dataset = _get_dataset(dataset_id)
 
-    # Auth check to make sure the user can see this package
-    check_access('package_show', context, {'id': dataset_id})
+    body = tk.request.form.get('comment', '')
+    if not body.strip():
+        tk.h.flash_error(tk._('You must provide a comment body'))
+        return _redirect_to_dataset(dataset)
 
-    pkg = get_action('package_show')(context, {'id': dataset_id})
+    if len(body.split()) > MAX_WORDS:
+        tk.h.flash_error(
+            tk._('Please limit your comment to {} words').format(MAX_WORDS))
+        return _redirect_to_dataset(dataset)
 
-    data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
-    data_dict['parent_id'] = parent
-    data_dict['url'] = '/dataset/%s' % pkg['name']
+    data_dict = {
+        'url': '/dataset/%s' % dataset['name'],
+        'subject': tk.request.form.get('subject', ''),
+        'comment': body,
+        'parent_id': parent_id,
+    }
+    try:
+        comment = tk.get_action('comment_create')({}, data_dict)
+    except tk.NotAuthorized:
+        return tk.abort(403, tk._('Not authorized to add comments'))
+    except tk.ValidationError as e:
+        tk.h.flash_error(_error_message(e))
+        return _redirect_to_dataset(dataset)
 
-    body = data_dict.get('comment', False)
-    if not body:
-        h.flash_error('You must provide a comment body')
-        h.redirect_to('package.read', id=dataset_id)
+    return _redirect_to_dataset(dataset, comment['id'])
 
-    words = data_dict.get('comment', '').split(' ')
-    if len(words) > 300:
-        h.flash_error('Please limit your comment to 300 words')
-        h.redirect_to('package.read', id=dataset_id)
 
-    res = get_action('comment_create')(context, data_dict)
-    return toolkit.redirect_to('/dataset/%s#comment_%s' % (pkg['name'], res['id']))
+@blueprint.route(
+    '/dataset/<dataset_id>/comments/<comment_id>/edit', methods=['POST'])
+def edit(dataset_id, comment_id):
+    dataset = _get_dataset(dataset_id)
 
-@blueprint.route('/dataset/<dataset_id>/comments/<comment_id>/delete', methods=["GET", "POST", "DELETE"])
+    data_dict = {
+        'id': comment_id,
+        'subject': tk.request.form.get('subject', ''),
+        'comment': tk.request.form.get('comment', ''),
+    }
+    try:
+        comment = tk.get_action('comment_update')({}, data_dict)
+    except tk.NotAuthorized:
+        return tk.abort(403, tk._('Not authorized to edit this comment'))
+    except tk.ObjectNotFound:
+        return tk.abort(404, tk._('Comment not found'))
+    except tk.ValidationError as e:
+        tk.h.flash_error(_error_message(e))
+        return _redirect_to_dataset(dataset)
+
+    return _redirect_to_dataset(dataset, comment['id'])
+
+
+@blueprint.route(
+    '/dataset/<dataset_id>/comments/<comment_id>/delete', methods=['POST'])
 def delete(dataset_id, comment_id):
-    context = {}
+    dataset = _get_dataset(dataset_id)
 
-    # Auth check to make sure the user can see this package
-    check_access('package_show', context, {'id': dataset_id})
+    try:
+        tk.get_action('comment_delete')({}, {'id': comment_id})
+    except tk.NotAuthorized:
+        return tk.abort(403, tk._('Not authorized to delete this comment'))
+    except tk.ObjectNotFound:
+        return tk.abort(404, tk._('Comment not found'))
 
-    get_action('comment_delete')(context, {'id': comment_id})
-
-    return toolkit.redirect_to('/dataset/%s' % dataset_id)
+    return _redirect_to_dataset(dataset)
