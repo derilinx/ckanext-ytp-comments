@@ -5,10 +5,12 @@ version = '0.0'
 setup(
     name='ckanext-ytp-comments',
     version=version,
-    description="",
+    description="CKAN extension for adding comments to datasets",
     long_description='''
     ''',
-    classifiers=[],  # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[
+        'Programming Language :: Python :: 3',
+    ],
     keywords='',
     author='',
     author_email='',
@@ -30,8 +32,5 @@ setup(
     entry_points='''
         [ckan.plugins]
         ytp_comments=ckanext.ytp.comments.plugin:YtpCommentsPlugin
-
-        [paste.paster_command]
-        initdb = ckanext.ytp.comments.command:InitDBCommand
     ''',
 )
